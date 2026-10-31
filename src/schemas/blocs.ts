@@ -254,6 +254,27 @@ export const formulaire = z
     eviter: 'Plus d\'un formulaire par page ; des champs obligatoires inutiles (chaque champ en trop fait perdre des demandes).',
   });
 
+/* ------------------------------ caracteristiques ------------------------------ */
+
+export const caracteristiques = z
+  .object({
+    block: z.literal('caracteristiques'),
+    variant: z.enum(['tableau', 'colonnes']).default('tableau').describe('tableau : libellé et valeur sur une ligne · colonnes : sur deux ou trois colonnes en grand écran'),
+    ...optionsCommunes,
+    ...entete,
+    elements: z
+      .array(z.object({ libelle: z.string().min(1).max(40), valeur: z.string().min(1).max(200), lien: z.string().regex(/^\/[a-z0-9/#-]*$/).optional() }).strict())
+      .min(1)
+      .max(24),
+    image: image.optional().describe('Photo du produit à côté de la liste, entière (jamais recadrée) : bouteille, objet, plan'),
+  })
+  .strict()
+  .meta({
+    role: 'Liste de caractéristiques : libellé et valeur (appellation, cépages, contenance, surface, puissance…).',
+    quand: 'Fiche produit ou technique. Généré automatiquement sur les pages des collections propres au site.',
+    eviter: 'Des phrases longues : une valeur tient en quelques mots. Recopier une caractéristique qui existe déjà dans une fiche de collection.',
+  });
+
 /* ---------------------------------- boucle --------------------------------- */
 
 const scalaire = z.union([z.string(), z.number(), z.boolean()]);
@@ -543,7 +564,7 @@ export const reservation = z
     eviter: 'Plusieurs blocs reservation ; un autre formulaire sur la même page ; écrire des horaires ou des capacités dans le texte (ils viennent des réglages du serveur).',
   });
 
-const blocsSocle = { hero, texte, 'texte-image': texteImage, features, galerie, slider, cta: ctaBloc, faq, chiffres, formulaire, boucle, tarifs: tarifsBloc, 'carte-restaurant': carteRestaurantBloc, partenaires: partenairesBloc, planning, legal, carte, 'match-center': matchCenter, frise, labels: labelsBloc, 'avis-google': avisGoogle, temoignages: temoignagesBloc, partage, reservation } as const;
+const blocsSocle = { hero, texte, 'texte-image': texteImage, features, galerie, slider, cta: ctaBloc, faq, chiffres, caracteristiques, formulaire, boucle, tarifs: tarifsBloc, 'carte-restaurant': carteRestaurantBloc, partenaires: partenairesBloc, planning, legal, carte, 'match-center': matchCenter, frise, labels: labelsBloc, 'avis-google': avisGoogle, temoignages: temoignagesBloc, partage, reservation } as const;
 
 // Un bloc du site ne remplace jamais un bloc du socle
 for (const nom of Object.keys(schemasSite)) if (nom in blocsSocle) throw new Error(`src/site/blocs/schemas.ts : « ${nom} » est déjà un bloc du socle, choisir un autre nom`);
@@ -551,5 +572,5 @@ for (const nom of Object.keys(schemasSite)) if (nom in blocsSocle) throw new Err
 export const blocs = { ...blocsSocle, ...schemasSite } as typeof blocsSocle & Record<string, z.ZodTypeAny>;
 export type NomBloc = keyof typeof blocs;
 
-export const section = z.discriminatedUnion('block', [hero, texte, texteImage, features, galerie, slider, ctaBloc, faq, chiffres, formulaire, boucle, tarifsBloc, carteRestaurantBloc, partenairesBloc, planning, legal, carte, matchCenter, frise, labelsBloc, avisGoogle, temoignagesBloc, partage, reservation, ...(Object.values(schemasSite) as any[])]);
+export const section = z.discriminatedUnion('block', [hero, texte, texteImage, features, galerie, slider, ctaBloc, faq, chiffres, caracteristiques, formulaire, boucle, tarifsBloc, carteRestaurantBloc, partenairesBloc, planning, legal, carte, matchCenter, frise, labelsBloc, avisGoogle, temoignagesBloc, partage, reservation, ...(Object.values(schemasSite) as any[])]);
 export type Section = z.infer<typeof section>;

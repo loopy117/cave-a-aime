@@ -1,0 +1,57 @@
+---
+/**
+ * Carte générée d'une collection propre au site (1.46.0) : image, surtitre, titre, détails en pastilles, prix,
+ * mention « épuisé ». Champs choisis dans la déclaration (rendu.carte) ; couleurs et polices des tokens seulement.
+ * Un site peut la remplacer (src/site/collections/rendus.ts).
+ */
+import Img from '../components/Img.astro';
+import { urlElement } from '../lib/urls';
+import { declarationsSite } from '../schemas/collections';
+import { valeurAffichee, imageFiche, optionsCollection, prixFr } from '../lib/collections-site';
+const { element, collection } = Astro.props;
+const decl = declarationsSite[collection];
+const d = element.data;
+const r = decl.rendu ?? {};
+const valeurs = (champs: string[] = []) => champs.map((c) => valeurAffichee(decl.champs[c], d[c])).filter(Boolean);
+const surtitre = valeurs(r.carte?.surtitre).join(' · ');
+const details = valeurs(r.carte?.details);
+const titre = r.carte?.titre ? valeurs(r.carte.titre).join(' — ') || d.titre : d.titre;
+const image = imageFiche(decl, d);
+const prix = decl.prix && optionsCollection(decl.nom).prix_affiches && typeof d[decl.prix] === 'number' ? prixFr(d[decl.prix]) : '';
+---
+<article class:list={['fc', d.epuise && 'fc--epuise']}>
+  {image && <div class="fc__media"><Img image={image} sizes="(min-width: 1000px) 25vw, (min-width: 640px) 50vw, 100vw" largeurs={[320, 480, 800]} /></div>}
+  <div class="fc__corps">
+    {surtitre && <p class="fc__surtitre">{surtitre}</p>}
+    <h3 class="fc__titre"><a href={urlElement(collection, element.id)} aria-label={titre !== d.titre ? d.titre : undefined}>{titre}</a></h3>
+    {details.length > 0 && <ul class="fc__details">{details.map((x) => <li>{x}</li>)}</ul>}
+    {(prix || d.epuise) && (
+      <p class="fc__pied">
+        {prix && <span class="fc__prix">{prix}</span>}
+        {d.epuise && <span class="fc__epuise">{r.libelle_epuise ?? 'Épuisé'}</span>}
+      </p>
+    )}
+  </div>
+</article>
+<style>
+  .fc { position: relative; height: 100%; display: flex; flex-direction: column; background: var(--c-surface); border: 1px solid var(--c-border-soft); border-radius: var(--radius-lg); overflow: hidden; transition: border-color .2s; }
+  .fc:hover { border-color: var(--c-border); }
+  .fc:has(a:focus-visible) { outline: 3px solid var(--c-link); outline-offset: 2px; }
+  .fc__media { background: var(--c-surface-alt); }
+  .fc__media :global(img) { width: 100%; height: 220px; object-fit: contain; display: block; padding: 12px; }
+  .fc__corps { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .fc__surtitre { margin: 0; font-size: var(--fs-sm); color: var(--c-eyebrow, var(--c-accent-text)); }
+  .fc__titre { margin: 0; font-family: var(--font-title); font-size: var(--fs-h3); line-height: var(--lh-tight); color: var(--c-text-strong); }
+  .fc__titre a { color: inherit; text-decoration: none; }
+  .fc__titre a:focus-visible { outline: none; }
+  .fc__titre a::after { content: ''; position: absolute; inset: 0; }
+  .fc__details { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .fc__details li { font-size: var(--fs-xs); color: var(--c-text-body); border: 1px solid var(--c-border); border-radius: var(--radius-pill); padding: 2px 10px; }
+  .fc__pied { margin: auto 0 0; padding-top: 6px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+  .fc__prix { font-family: var(--font-mono); font-size: var(--fs-md); color: var(--c-text-strong); }
+  .fc__epuise { font-size: var(--fs-sm); font-weight: 600; color: var(--c-text-muted); }
+  .fc--epuise .fc__media :global(img) { opacity: .55; }
+  :global(body.ap-cartes-nu) .fc { border: 0; border-top: 1px solid var(--c-border); border-radius: 0; background: none; }
+  :global(body.ap-cartes-nu) .fc__media { background: none; }
+  :global(body.ap-cartes-nu) .fc__corps { padding-inline: 0; }
+</style>

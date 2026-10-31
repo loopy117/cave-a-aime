@@ -4,6 +4,7 @@
  */
 import site from '../../data/site.json' with { type: 'json' };
 import type { NomCollection } from './collections';
+import { collectionsSite } from '../site/collections';
 
 export const COLLECTIONS_MODELE: Record<string, NomCollection[]> = {
   entreprise: ['services', 'realisations', 'zones'],
@@ -18,5 +19,6 @@ export const BLOCS_MODELE: Record<string, string[]> = {
 };
 
 export const modeleSite: string = (site as { modele?: string }).modele ?? 'entreprise';
-export const collectionsDuSite = (): NomCollection[] => COLLECTIONS_MODELE[modeleSite] ?? COLLECTIONS_MODELE.entreprise;
+/** Collections proposées : celles du modèle, puis celles propres au site (src/site/collections). */
+export const collectionsDuSite = (): NomCollection[] => [...(COLLECTIONS_MODELE[modeleSite] ?? COLLECTIONS_MODELE.entreprise), ...collectionsSite.map((d) => d.nom)];
 export const blocDuSite = (bloc: string): boolean => !BLOCS_MODELE[bloc] || BLOCS_MODELE[bloc].includes(modeleSite);

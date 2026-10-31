@@ -1,0 +1,36 @@
+---
+/** Bloc caracteristiques (1.46.0) : libellés et valeurs d'une fiche (liste de définitions), photo entière à côté. */
+import Section from '../components/Section.astro';
+import Img from '../components/Img.astro';
+const { variant = 'tableau', background, spacing, id, surtitre, titre, intro, elements = [], image } = Astro.props;
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <div class:list={['ca', image && 'ca--image']}>
+    {image && <div class="ca__media"><Img image={image} priorite sizes="(min-width: 900px) 360px, 80vw" largeurs={[360, 720, 1080]} /></div>}
+    <dl class:list={['ca__liste', `ca__liste--${variant}`]}>
+      {elements.map((e: any) => (
+        <div class="ca__ligne">
+          <dt class="ca__libelle">{e.libelle}</dt>
+          <dd class="ca__valeur">{e.lien ? <a href={e.lien}>{e.valeur}</a> : e.valeur}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+</Section>
+<style>
+  .ca { display: grid; gap: clamp(24px, 4vw, 56px); }
+  .ca--image { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 820px) { .ca--image { grid-template-columns: minmax(220px, 360px) minmax(0, 1fr); align-items: start; } }
+  .ca__media { background: var(--c-surface-alt); border-radius: var(--radius-lg); padding: 20px; display: flex; justify-content: center; }
+  .ca__media :global(img) { width: 100%; max-height: 520px; height: auto; object-fit: contain; display: block; }
+  .ca__liste { margin: 0; max-width: var(--container-narrow); }
+  .ca__ligne { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 4px 20px; padding-block: 12px; border-bottom: 1px solid var(--c-border); }
+  .ca__ligne:first-child { border-top: 1px solid var(--c-border); }
+  .ca__libelle { font-size: var(--fs-sm); color: var(--c-text-muted); }
+  .ca__valeur { margin: 0; color: var(--c-text-strong); }
+  .ca__liste--colonnes { max-width: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); column-gap: 32px; }
+  .ca__liste--colonnes .ca__ligne:nth-child(-n+3) { border-top: 1px solid var(--c-border); }
+  @media (max-width: 520px) { .ca__ligne { grid-template-columns: 1fr; } }
+  :global(.on-dark) .ca__valeur { color: var(--c-on-dark-body); }
+  :global(.on-dark) .ca__libelle { color: var(--c-on-dark-muted); }
+</style>

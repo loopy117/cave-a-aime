@@ -4,6 +4,7 @@
  */
 import type { NomCollection } from '../schemas/collections';
 import site from '../../data/site.json' with { type: 'json' };
+import { collectionsSite } from '../site/collections';
 
 export interface ReglagesCollection {
   base: string;               // préfixe d'URL
@@ -18,10 +19,12 @@ export interface ReglagesCollection {
     ordre: string | string[];
     parPage: number;
     parCategorie: boolean;    // pages /<base>/categorie/<slug>
+    /** Collection propre au site : liste filtrable (FicheListe) au lieu de la grille paginée. */
+    fiches?: boolean;
   };
 }
 
-export const reglages: Record<NomCollection, ReglagesCollection> = {
+const reglagesSocle: Record<string, ReglagesCollection> = {
   services: { base: '/services', libelle: 'Services', detail: true },
   // Articles « À savoir » : pages de détail /a-savoir/<id>, sans archive
   // (la page /a-savoir reste une page « aimant » maison, qui liste via le bloc « boucle »).
@@ -83,4 +86,24 @@ export const reglages: Record<NomCollection, ReglagesCollection> = {
       parCategorie: false,
     },
   },
+};
+
+// Collections propres au site (1.46.0) : une page par fiche et une liste filtrable, sans pagination.
+export const reglages: Record<NomCollection, ReglagesCollection> = {
+  ...reglagesSocle,
+  ...Object.fromEntries(collectionsSite.map((d) => [d.nom, {
+    base: d.base,
+    libelle: d.libelle,
+    detail: true,
+    archive: {
+      titre: d.rendu?.titre_liste ?? d.libelle,
+      intro: d.rendu?.intro_liste,
+      carte: `${d.nom}-carte`,
+      affichage: 'grid',
+      ordre: d.rendu?.ordre ?? 'titre asc',
+      parPage: 100000,
+      parCategorie: false,
+      fiches: true,
+    },
+  } satisfies ReglagesCollection])),
 };
