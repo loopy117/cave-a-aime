@@ -1,7 +1,4 @@
-/** Polices du site (paquets @fontsource, hébergées avec le site) : feuilles de style et fichiers préchargés. */
-import '@fontsource-variable/fraunces/opsz.css';
-import '@fontsource-variable/instrument-sans/wght.css';
+/** Polices du site : Spectral et Spectral SC (licence OFL), servies depuis public/fonts, comme sur l'ancien site de la cave. */
 import '@fontsource/ibm-plex-mono/latin-400.css';
-import '@fontsource/ibm-plex-mono/latin-500.css';
-export { default as policeTitre } from '@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url';
-export { default as policeTexte } from '@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2?url';
+export const policeTitre = '/fonts/spectral-sc-latin-400-normal.woff2';
+export const policeTexte = '/fonts/spectral-latin-400-normal.woff2';

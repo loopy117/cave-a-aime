@@ -47,5 +47,11 @@
     "Lauris",
     "Salon-de-Provence",
     "Cheval-Blanc"
-  ]
+  ],
+  "apparence": {
+    "entete": "centre",
+    "surtitres": "phrase",
+    "cartes": "nu",
+    "pied": "grand"
+  }
 }
