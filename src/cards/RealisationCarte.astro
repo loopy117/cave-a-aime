@@ -1,0 +1,23 @@
+---
+import Img from '../components/Img.astro';
+import { urlElement } from '../lib/urls';
+const { element } = Astro.props;
+const d = element.data;
+---
+<article class="rc" data-metier={d.categorie}>
+  {d.image && <div class="rc__media"><Img image={d.image} sizes="(min-width: 1000px) 33vw, (min-width: 640px) 50vw, 100vw" largeurs={[480, 800, 1200]} /></div>}
+  <div class="rc__corps">
+    <p class="rc__lieu">{d.lieu}</p>
+    <h3 class="rc__titre"><a href={urlElement('realisations', element.id)}>{d.titre}</a></h3>
+  </div>
+</article>
+<style>
+  .rc { position: relative; height: 100%; background: var(--c-surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--c-border-soft); transition: box-shadow .2s; }
+  .rc:hover { box-shadow: 0 10px 30px oklch(0.24 0.02 160 / 0.08); }
+  .rc__media :global(img) { width: 100%; height: 180px; object-fit: cover; }
+  .rc__corps { padding: 18px; display: flex; flex-direction: column; gap: 5px; }
+  .rc__lieu { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.06 200); }
+  .rc__titre { font-size: 17px; font-weight: 600; color: oklch(0.25 0.02 160); line-height: 1.3; }
+  .rc__titre a { color: inherit; }
+  .rc__titre a::after { content: ''; position: absolute; inset: 0; }
+</style>

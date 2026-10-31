@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Édition du site</title>
+  <link rel="icon" href="data:," />
+</head>
+<body>
+  <!-- Raccourcis de l'agence, hors de l'interface Decap -->
+  <nav class="xm-liens" aria-label="Raccourcis">
+    <a href="/xmedia-ai/">← Espace xmedia·ai</a>
+    <a href="/" target="_blank" rel="noopener">Voir le site ↗</a>
+  </nav>
+  <style>
+    .xm-liens{position:fixed;left:12px;bottom:12px;z-index:1000;display:flex;gap:4px;padding:4px;border-radius:999px;
+      background:#1c2a3a;box-shadow:0 2px 8px rgba(0,0,0,.25);font:500 13px/1 system-ui,sans-serif}
+    .xm-liens a{color:#e6ecf5;text-decoration:none;padding:8px 12px;border-radius:999px}
+    .xm-liens a:hover,.xm-liens a:focus-visible{background:#33425a;outline:none}
+  </style>
+  <!-- Decap CMS, hébergé sur le site (version figée par scripts/decap.ts) ; configuration : config.yml -->
+  <!-- Connexion par l'espace client : si la session est ouverte, l'éditeur s'ouvre directement ; sinon, le bouton
+       de connexion de Decap (« GitHub ») est renommé, et ouvre la connexion de l'espace client (xmedia-ai/decap-auth.php). -->
+  <script>
+    (async () => {
+      let config = null;
+      try {
+        const r = await fetch('/xmedia-ai/decap-auth.php?json=1', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.token) localStorage.setItem('decap-cms-user', JSON.stringify({ token: j.token, backendName: 'github' }));
+        else localStorage.removeItem('decap-cms-user');
+        // Rédacteur : seules ses rubriques sont proposées (pages, réalisations…) ; publier reste l'affaire d'un valideur
+        window.xmRedacteur = j.role === 'redacteur';
+        if (j.role === 'redacteur') {
+          const c = await fetch('config.json', { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+          if (c) {
+            const rub = j.rubriques || [];
+            c.collections = c.collections.filter((col) => col.name !== 'reglages' && rub.includes(col.name === 'sous_pages' ? 'pages' : col.name));
+            c.load_config_file = false;
+            config = c;
+          }
+        }
+      } catch (e) { /* hors ligne : Decap affichera sa connexion */ }
+      // Initialisation manuelle : le widget de la photothèque (phototheque.js) est enregistré avant l'ouverture de l'éditeur
+      window.CMS_MANUAL_INIT = true;
+      if (config) {
+        if (!config.collections.length) {
+          document.body.insertAdjacentHTML('afterbegin', '<p style="font:16px system-ui,sans-serif;padding:24px;max-width:560px">Aucune rubrique ne vous est encore confiée : demandez à un administrateur du site de vous en attribuer une (espace client, menu Utilisateurs).</p>');
+          return;
+        }
+      }
+      new MutationObserver(() => {
+        for (const b of document.querySelectorAll('button')) if (/github/i.test(b.textContent) && !b.dataset.xm) { b.dataset.xm = '1'; b.textContent = 'Se connecter avec mon espace client'; }
+        // Rédacteur : ni « Publier » ni « Prêt » (réservés aux valideurs ; le relais les refuse de toute façon)
+        if (window.xmRedacteur) for (const b of document.querySelectorAll('button, [role=menuitem]')) {
+          const t = b.textContent.trim();
+          if (!b.hidden && (/^Publier/.test(t) || (b.getAttribute('role') === 'menuitem' && /^Prêt/.test(t)))) b.hidden = true;
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+      const s = document.createElement('script'); s.src = 'decap/decap-cms.js';
+      s.onload = () => {
+        const demarrer = () => (window.initCMS || window.CMS.init)(config ? { config } : undefined);
+        const p = document.createElement('script'); p.src = 'phototheque.js';
+        p.onload = demarrer; p.onerror = demarrer;   // sans photothèque, l'éditeur s'ouvre quand même
+        document.body.appendChild(p);
+      };
+      document.body.appendChild(s);
+    })();
+  </script>
+</body>
+</html>

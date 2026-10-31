@@ -1,0 +1,9 @@
+---
+import { urlElement } from '../lib/urls';
+const { element } = Astro.props;
+---
+<a class="zp" data-metier={element.data.categorie} href={urlElement('zones', element.id)}>{element.data.titre}</a>
+<style>
+  .zp { display: inline-block; font-size: 15px; font-weight: 500; padding: 11px 18px; border-radius: 10px; background: var(--metier-soft); color: var(--metier-ink); transition: filter .15s; }
+  .zp:hover { color: var(--metier-ink); filter: brightness(0.96); }
+</style>

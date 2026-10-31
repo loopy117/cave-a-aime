@@ -1,0 +1,73 @@
+titre: Accueil
+statut: publie
+seo:
+  titre: "Cave à vin bio dans le Luberon · La Cave à Aimé"
+  description: "Vins bio du Luberon et d'ailleurs, fromages, bar à vin et événements : La Cave à Aimé vous accueille à Mérindol, Lauris, Salon-de-Provence et Cheval-Blanc."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: "Cave à vin · Luberon et Provence"
+    titre: "Vins bio, fromages et bonnes choses, en quatre adresses"
+    texte: "Luberon, Ventoux, Vallée du Rhône, Provence… et quelques pépites d'ailleurs. Dégustation offerte dans nos caves."
+    ctas:
+      - label: Trouver ma cave
+        href: /caves
+        style: primaire
+      - label: "04 90 72 38 01"
+        href: "tel:+33490723801"
+        style: secondaire
+  - block: features
+    variant: grille-icones
+    surtitre: Nos caves
+    titre: Quatre adresses en Provence
+    items:
+      - icone: repere
+        titre: Mérindol
+        texte: "Cave et bar à vin au cœur du village, terrasse et salle en pierre voûtée."
+        lien: { label: "La cave de Mérindol", href: /caves/merindol }
+      - icone: repere
+        titre: Lauris
+        texte: "La Cave de LaurUs by Aimé, à quelques minutes de Lourmarin, avec un grand parking."
+        lien: { label: "La cave de Lauris", href: /caves/lauris }
+      - icone: repere
+        titre: Salon-de-Provence
+        texte: "Vins bio, spiritueux, bières artisanales et fromages à la coupe, depuis 2021."
+        lien: { label: "La cave de Salon", href: /caves/salon-de-provence }
+      - icone: repere
+        titre: Cheval-Blanc
+        texte: "Au début de la Canebière, porte d'entrée du Luberon Sud, pour vos vins et vos apéros."
+        lien: { label: "La cave de Cheval-Blanc", href: /caves/cheval-blanc }
+  - block: texte
+    variant: etroit
+    background: alt
+    surtitre: La cave
+    titre: Des vins bio, du fromage et des bonnes choses
+    contenu: |
+      C'est la promesse de la Cave à Aimé : des vins bio du Luberon, du Ventoux, de la Vallée du Rhône et de Provence, et quelques pépites d'ailleurs. Une sélection de bières artisanales, de spiritueux et de produits du coin qui sentent bon la Provence.
+
+      Laissez-vous tenter par nos fromages, choisis avec soin pour accompagner une bonne bouteille.
+  - block: features
+    variant: liste
+    surtitre: Et aussi
+    titre: Bar à vin, plateaux et événements
+    items:
+      - titre: Le bar à vin de Mérindol
+        texte: "Pour boire un verre ou passer la soirée, autour d'une planche de fromage ou de charcuterie du coin."
+        lien: { label: "Le bar à vin", href: /bar-a-vin }
+      - titre: Fromages et plateaux
+        texte: "Fromages achetés en direct aux producteurs ou à des artisans fromagers, en plateaux à partager ou à offrir."
+        lien: { label: "Nos plateaux", href: /fromages }
+      - titre: Made In Luberon Events
+        texte: "Bar à vin mobile et comptoirs gourmands pour vos mariages, anniversaires et soirées, dans le Luberon et en Provence."
+        lien: { label: "Les événements", href: /evenements }
+  - block: cta
+    variant: carte
+    titre: "Une question, un plateau, une soirée ?"
+    texte: "Appelez-nous ou écrivez-nous, on vous répond avec plaisir."
+    ctas:
+      - label: Nous écrire
+        href: /contact
+        style: primaire
+      - label: "04 90 72 38 01"
+        href: "tel:+33490723801"
+        style: secondaire

@@ -1,0 +1,52 @@
+---
+import { uidPage } from '../lib/uid';
+/**
+ * Décor « sillage » (fonds sillage et sillage-sombre) : halos et traits en S, en SVG léger, derrière le contenu.
+ * Couleurs réglées par les design tokens (--sillage-halo, --sillage-trait…), pour s'adapter à chaque site.
+ */
+interface Props { variante?: 'clair' | 'sombre' }
+const { variante = 'clair' } = Astro.props;
+const uid = uidPage(Astro.locals, 'sillage');   // identifiants de dégradés uniques dans la page
+const S = 'M1250 110 C 1130 250, 1120 420, 900 520 S 420 650, -40 610';
+const traits = [
+  { d: 'M1242 100 C 1060 200, 990 320, 770 390 S 300 460, -40 430', w: 7, o: 1, dash: '90 160 40 240' },
+  { d: 'M1262 122 C 1210 330, 1170 560, 960 680 S 520 800, 120 860', w: 7, o: 1, dash: '40 200 80 170' },
+  { d: 'M1230 106 C 1040 222, 960 350, 730 420 S 280 500, -40 480', w: 6, o: 0.55, dash: '30 260 60 210' },
+  { d: 'M1256 134 C 1190 350, 1130 590, 900 710 S 460 830, 40 880', w: 6, o: 0.55, dash: '70 230 30 260' },
+];
+---
+<svg class:list={['sillage', `sillage--${variante}`]} viewBox="0 0 1440 840" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id={`s1-${uid}`} cx={variante === 'clair' ? '86%' : '78%'} cy={variante === 'clair' ? '12%' : '30%'} r={variante === 'clair' ? '55%' : '70%'}>
+      <stop offset="0" class="sillage__lueur" />
+      <stop offset="1" class="sillage__fondu" />
+    </radialGradient>
+    <radialGradient id={`s2-${uid}`} cx={variante === 'clair' ? '0%' : '10%'} cy="100%" r={variante === 'clair' ? '45%' : '60%'}>
+      <stop offset="0" class="sillage__lueur2" />
+      <stop offset="1" class="sillage__fondu" />
+    </radialGradient>
+  </defs>
+  <rect width="1440" height="840" fill={`url(#s1-${uid})`} />
+  <rect width="1440" height="840" fill={`url(#s2-${uid})`} />
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" transform={variante === 'sombre' ? 'translate(1440 840) scale(-1 -1)' : undefined}>
+    <path d={S} class="sillage__halo" stroke-width="90" />
+    <path d={S} class="sillage__principal" stroke-width="7" stroke-dasharray="60 170 28 220" />
+    {traits.map((t) => <path d={t.d} class="sillage__trait" stroke-width={t.w} style={`--o:${t.o}`} stroke-dasharray={t.dash} />)}
+  </g>
+</svg>
+<style>
+  .sillage { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  .sillage--clair .sillage__lueur { stop-color: var(--sillage-lueur, #BFE7F0); stop-opacity: 0.95; }
+  .sillage--clair .sillage__lueur2 { stop-color: var(--sillage-lueur2, #D7F1F6); stop-opacity: 0.9; }
+  .sillage--clair .sillage__fondu { stop-color: var(--c-surface, #fff); stop-opacity: 0; }
+  .sillage--clair .sillage__halo { stroke: var(--sillage-trait, #8FD0DE); stroke-opacity: 0.1; }
+  .sillage--clair .sillage__principal { stroke: #fff; stroke-opacity: 0.9; }
+  .sillage--clair .sillage__trait { stroke: var(--sillage-trait-pale, #9ED6E2); stroke-opacity: calc(0.45 * var(--o)); }
+  .sillage--sombre .sillage__lueur { stop-color: var(--sillage-lueur-sombre, #4C88A0); stop-opacity: 0.55; }
+  .sillage--sombre .sillage__lueur2 { stop-color: var(--c-primary-deep, #1E4656); stop-opacity: 0.6; }
+  .sillage--sombre .sillage__fondu { stop-color: var(--c-surface-dark, #2F6478); stop-opacity: 0; }
+  .sillage--sombre .sillage__halo { stroke: var(--sillage-trait, #8FD0DE); stroke-opacity: 0.07; }
+  .sillage--sombre .sillage__principal { stroke: #fff; stroke-opacity: 0.16; }
+  .sillage--sombre .sillage__trait { stroke: #fff; stroke-opacity: calc(0.1 * var(--o)); }
+  @media (max-width: 700px) { .sillage { opacity: 0.7; } }
+</style>

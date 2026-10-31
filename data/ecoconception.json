@@ -1,0 +1,12 @@
+{
+  "criteres": {
+    "1.1": {
+      "statut": "valide",
+      "texte": "Le site présente l’offre Sillaya de XMEDIACREATION : fonctionnement, tarifs affichés, questions fréquentes et demande d’audit gratuit. Il répond aux questions des entreprises avant tout contact, et il est lui-même construit avec le code commun évalué ici, ce qui en fait une démonstration de sa sobriété."
+    },
+    "1.2": {
+      "statut": "valide",
+      "texte": "Publics visés : dirigeants de TPE et de PME, artisans, commerçants, clubs et mairies, qui veulent un site qui avance pendant qu’ils travaillent, sans logiciel à apprendre ni devis pour chaque changement."
+    }
+  }
+}

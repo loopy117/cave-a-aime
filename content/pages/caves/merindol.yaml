@@ -1,0 +1,50 @@
+titre: "Mérindol"
+statut: publie
+seo:
+  titre: "Cave à vin bio à Mérindol · La Cave à Aimé"
+  description: "Vins bio, bar à vin et tapas en plein cœur de Mérindol, au pied du Luberon. Terrasse et salle voûtée, du mardi au samedi."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: "Cave à vin · Mérindol"
+    titre: "Cave et bar à vin à Mérindol"
+    texte: "12 rue de la Fontaine, 84360 Mérindol"
+    ctas:
+      - label: "Appeler la cave"
+        href: "tel:+33490723801"
+        style: primaire
+      - label: "Itinéraire"
+        href: "https://www.google.com/maps/search/?api=1&query=12+rue+de+la+Fontaine+84360+Mérindol"
+        style: secondaire
+  - block: texte
+    variant: etroit
+    titre: "Cave et bar à vin au cœur de Mérindol"
+    contenu: |
+      Bienvenue à Mérindol, petit village authentique au pied du Luberon, connu pour son histoire vaudoise. La cave et son bar sont en plein cœur du village : une sélection de vins bio du Luberon et d'ailleurs, des tapas locales et l'ambiance bar à vin, en terrasse ou dans la salle en pierre voûtée.
+
+      Tous les jeudis après-midi : vente d'huîtres et de fruits de mer. Le vendredi et le samedi, le bar reste ouvert jusqu'à minuit selon l'affluence.
+
+      « Mérindolais un jour, Mérindolais toujours ! » — Aimé
+  - block: features
+    variant: liste
+    background: alt
+    surtitre: Horaires et contact
+    titre: "Nous trouver à Mérindol"
+    items:
+      - icone: horloge
+        titre: Horaires
+        texte: "Mardi, mercredi, jeudi : 10 h – 12 h 30 et 16 h – 19 h 30 · Vendredi et samedi : 10 h – 12 h 30 et 16 h – minuit · Dimanche et lundi : fermé"
+      - icone: repere
+        titre: Adresse
+        texte: "12 rue de la Fontaine, 84360 Mérindol"
+      - icone: telephone
+        titre: "Téléphone et e-mail"
+        texte: "04 90 72 38 01 · contact@cave-a-aime.fr"
+  - block: cta
+    variant: carte
+    titre: "Un plateau à préparer, une bouteille à mettre de côté ?"
+    texte: "Appelez la cave de Mérindol : on prépare votre commande pour votre passage."
+    ctas:
+      - label: "04 90 72 38 01"
+        href: "tel:+33490723801"
+        style: primaire

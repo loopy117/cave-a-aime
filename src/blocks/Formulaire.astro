@@ -1,0 +1,323 @@
+---
+/**
+ * Bloc formulaire : envoi par /formulaire/envoi.php (PHPMailer).
+ * Fonctionne sans JavaScript (redirection vers /merci) ; avec JavaScript,
+ * l'envoi se fait sur place avec messages d'erreur par champ.
+ */
+import Section from '../components/Section.astro';
+import site from '../../data/site.json';
+import taxonomies from '../../data/taxonomies.json';
+import { indexSite } from '../lib/site';
+import formulairesSite from '../../data/formulaires.json';
+import type { FormulaireMetier } from '../schemas/formulaires';
+
+const { variant = 'avec-coordonnees', background, spacing, id = 'formulaire', surtitre, titre, intro,
+  champs: champsSimples = ['nom', 'email', 'telephone', 'commune', 'service', 'message'], obligatoires: obligSimples = ['nom', 'message'],
+  sujet = 'Demande depuis le site', bouton = 'Envoyer ma demande', formulaire, note } = Astro.props;
+
+// Formulaire métier (spec partie 5) : étape 1 courte et obligatoire, étape 2 facultative (précisions, photos)
+const metier = formulaire ? ((formulairesSite as Record<string, FormulaireMetier>)[formulaire] ?? null) : null;
+const champs: string[] = metier ? (metier.champs ?? ['service', 'commune', 'nom', 'telephone', 'email', 'message']) : champsSimples;
+const obligatoires: string[] = metier ? (metier.obligatoires ?? ['service', 'commune', 'nom', 'message'].filter((c) => champs.includes(c))) : obligSimples;
+const prestations = metier?.prestations ?? [...Object.values(taxonomies.metiers), 'Autre'];
+const precisions = metier?.precisions ?? [];
+const photos = precisions.find((p) => p.type === 'photos') as { id: string; label: string; max: number } | undefined;
+
+const defs: Record<string, { label: string; type: string; autocomplete?: string; inputmode?: string; large?: boolean }> = {
+  nom: { label: 'Nom et prénom', type: 'text', autocomplete: 'name' },
+  email: { label: 'E-mail', type: 'email', autocomplete: 'email' },
+  telephone: { label: 'Téléphone', type: 'tel', autocomplete: 'tel', inputmode: 'tel' },
+  commune: { label: 'Commune du projet', type: 'text', autocomplete: 'address-level2' },
+  service: { label: 'Votre projet', type: 'select' },
+  message: { label: metier ? 'Votre projet en quelques mots' : 'Votre message', type: 'textarea', large: true },
+};
+// message : obligatoire s'il est affiché (un formulaire métier peut s'en passer, ex. audit)
+const oblig = new Set([...obligatoires, ...(champs.includes('message') ? ['message'] : [])]);
+const enTete = !!metier?.precisions_en_tete;
+const carte = variant === 'carte';
+// Libellés propres au formulaire métier (data/formulaires.json → libelles)
+for (const [c, l] of Object.entries(metier?.libelles ?? {})) if (defs[c]) defs[c].label = l;
+const tel = 'tel:+33' + site.telephone.replace(/\s/g, '').replace(/^0/, '');
+const confidentialite = (await indexSite()).get('/confidentialite');
+const lienConfidentialite = confidentialite?.publie ? '/confidentialite' : null;
+---
+<Section {background} {spacing} {id} surtitre={carte ? undefined : surtitre} titre={carte ? undefined : titre} intro={carte ? undefined : intro}>
+  <div class:list={['fm', `fm--${variant}`]}>
+    {carte && (
+      <div class="fm__entete">
+        {surtitre && <p class="eyebrow">{surtitre}</p>}
+        {titre && <h2 class="h2 fm__titre">{titre}</h2>}
+        {intro && <p class="fm__intro">{intro}</p>}
+      </div>
+    )}
+    <form class="fm__form" method="post" action="/formulaire/envoi.php" data-formulaire novalidate enctype={photos ? 'multipart/form-data' : undefined} data-photos-max={photos?.max}>
+      <input type="hidden" name="obligatoires" value={[...oblig].join(',')} />
+      {metier && <input type="hidden" name="formulaire" value={formulaire} />}
+      <input type="hidden" name="sujet" value={sujet} />
+      <input type="hidden" name="duree" value="" data-duree />
+      <div class="fm__piege" aria-hidden="true">
+        <label>Site web (ne pas remplir)<input type="text" name="site_web" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      {enTete && (
+        <div class="fm__grille fm__grille--pile">
+          {precisions.filter((p: any) => p.type !== 'photos').map((p: any) => {
+            const idc = `f-p-${p.id}`;
+            return (
+              <div class="fm__champ">
+                <label for={idc}>{p.label}</label>
+                {p.type === 'choix'
+                  ? <select id={idc} name={`p_${p.id}`}><option value="">Choisir…</option>{p.options.map((o: string) => <option>{o}</option>)}</select>
+                  : <input id={idc} name={`p_${p.id}`} type="text" inputmode={p.type === 'url' ? 'url' : undefined} autocomplete={p.type === 'url' ? 'url' : undefined} maxlength="200" placeholder={p.aide} pattern={p.type === 'url' ? '(https?://)?[^\\s]+\\.[^\\s]{2,}' : undefined} title={p.type === 'url' ? 'Une adresse web, par exemple www.monentreprise.fr' : undefined} />}
+                <p class="fm__erreur" data-erreur={`p_${p.id}`}></p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div class:list={['fm__grille', (enTete || carte) && 'fm__grille--pile']}>
+        {champs.map((c: string) => {
+          const d = defs[c];
+          const requis = oblig.has(c);
+          const idc = `f-${c}`;
+          return (
+            <div class:list={['fm__champ', d.large && 'fm__champ--large']}>
+              <label for={idc}>{d.label}{enTete ? null : requis ? <span class="fm__requis" aria-hidden="true"> *</span> : <span class="fm__option"> (facultatif)</span>}</label>
+              {d.type === 'textarea' ? <textarea id={idc} name={c} rows="5" maxlength="5000" required={requis} aria-describedby={`${idc}-err`}></textarea>
+                : d.type === 'select' ? (
+                  <select id={idc} name={c} required={requis} aria-describedby={`${idc}-err`}>
+                    <option value="">Choisir…</option>
+                    {prestations.map((m) => <option>{m}</option>)}
+                    {!metier && <option>Autre</option>}
+                  </select>)
+                : <input id={idc} name={c} type={d.type} autocomplete={d.autocomplete} inputmode={d.inputmode as any} maxlength={c === 'email' ? 150 : 100} required={requis} aria-describedby={`${idc}-err`} />}
+              <p class="fm__erreur" id={`${idc}-err`} data-erreur={c}></p>
+            </div>
+          );
+        })}
+      </div>
+      {metier && champs.includes('telephone') && champs.includes('email') && <p class="fm__aide">Indiquez au moins un téléphone ou un e-mail pour que nous puissions vous répondre.</p>}
+      {metier?.urgence && (
+        <label class="fm__urgent"><input type="checkbox" name="urgence" value="1" /> {metier.urgence}</label>
+      )}
+      {precisions.length > 0 && !enTete && (
+        <details class="fm__plus" open={metier?.precisions_ouvertes || undefined}>
+          <summary>Pour une réponse plus précise <span class="fm__option">(facultatif)</span></summary>
+          <div class="fm__grille">
+            {precisions.map((p: any) => {
+              const idc = `f-p-${p.id}`;
+              return (
+                <div class:list={['fm__champ', p.type === 'photos' && 'fm__champ--large']}>
+                  <label for={idc}>{p.label}</label>
+                  {p.type === 'choix' ? (
+                    <select id={idc} name={`p_${p.id}`}><option value="">Choisir…</option>{p.options.map((o: string) => <option>{o}</option>)}</select>
+                  ) : p.type === 'texte' ? (
+                    <input id={idc} name={`p_${p.id}`} type="text" maxlength="200" placeholder={p.aide} />
+                  ) : p.type === 'url' ? (
+                    <input id={idc} name={`p_${p.id}`} type="text" inputmode="url" autocomplete="url" maxlength="200" placeholder={p.aide} pattern="(https?://)?[^\s]+\.[^\s]{2,}" title="Une adresse web, par exemple www.monentreprise.fr" />
+                  ) : (
+                    <>
+                      <input id={idc} name="photos[]" type="file" accept="image/jpeg,image/png,image/webp" multiple data-photos />
+                      <p class="fm__option">{p.max} photos au plus, JPEG, PNG ou WebP.</p>
+                    </>
+                  )}
+                  <p class="fm__erreur" data-erreur={p.type === 'photos' ? 'photos' : `p_${p.id}`}></p>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      )}
+      <p class="fm__rgpd">
+        {metier
+          ? `Vos informations servent uniquement à traiter votre demande. Elles sont conservées 3 ans après notre dernier échange, jamais transmises à des tiers, et vous pouvez demander à tout moment leur consultation ou leur suppression${site.email ? ` (${site.email})` : ''}.`
+          : 'Vos coordonnées servent uniquement à répondre à votre demande et ne sont jamais transmises à des tiers.'}
+        {lienConfidentialite && <a href={lienConfidentialite}>En savoir plus</a>}
+      </p>
+      <div class="fm__actions">
+        <button class="btn btn--primaire" type="submit" data-bouton>{bouton}</button>
+        <p class="fm__statut" role="status" aria-live="polite" data-statut></p>
+      </div>
+      {note && <p class="fm__note">{note}</p>}
+    </form>
+    {variant === 'avec-coordonnees' && (
+      <aside class="fm__coord">
+        <p class="eyebrow">Nous joindre</p>
+        <a class="fm__tel" href={tel}>{site.telephone}</a>
+        {site.email && <a href={`mailto:${site.email}`}>{site.email}</a>}
+        <p>{site.horaires}</p>
+        {site.urgence?.actif && <p class="fm__urgence"><span aria-hidden="true">●</span> {site.urgence.texte}</p>}
+        <p class="fm__zone">{site.zone_resume}</p>
+      </aside>
+    )}
+  </div>
+</Section>
+
+<script>
+  import { evenement } from '../lib/evenements';
+
+  /** Photos réduites à 2000 px dans le navigateur : envoi plus rapide, pas de limite de taille dépassée. */
+  async function reduire(f: File): Promise<File> {
+    try {
+      const img = await createImageBitmap(f, { imageOrientation: 'from-image' });
+      const r = Math.min(1, 2000 / Math.max(img.width, img.height));
+      if (r === 1 && f.size < 2.5e6) return f;
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+      const blob: Blob | null = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
+      return blob ? new File([blob], f.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : f;
+    } catch { return f; }
+  }
+  // Champs préremplis depuis l'adresse : ?formule=Croissance → précision « formule » (liens des grilles de prix)
+  const params = new URLSearchParams(location.search);
+  for (const form of document.querySelectorAll<HTMLFormElement>('[data-formulaire]')) {
+    for (const [cle, valeur] of params) {
+      if (!/^[a-z0-9_-]{1,40}$/.test(cle) || !valeur) continue;
+      const champ = form.querySelector<HTMLSelectElement | HTMLInputElement>(`[name="p_${cle}"]`);
+      if (champ instanceof HTMLSelectElement) {
+        const o = [...champ.options].find((x) => x.value && x.value.toLowerCase().startsWith(valeur.toLowerCase().slice(0, 80)));
+        if (o) champ.value = o.value;
+      } else if (champ && champ.type !== 'file') champ.value = valeur.slice(0, 200);
+    }
+  }
+  for (const form of document.querySelectorAll<HTMLFormElement>('[data-formulaire]')) {
+    const debut = performance.now();
+    const statut = form.querySelector<HTMLElement>('[data-statut]')!;
+    const bouton = form.querySelector<HTMLButtonElement>('[data-bouton]')!;
+    if (new URLSearchParams(location.search).get('envoi') === 'erreur') {
+      statut.textContent = "L'envoi n'a pas abouti. Vérifiez les champs et réessayez, ou appelez-nous.";
+      statut.dataset.etat = 'erreur';
+    }
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      form.querySelector<HTMLInputElement>('[data-duree]')!.value = String(Math.round(performance.now() - debut));
+      form.querySelectorAll<HTMLElement>('[data-erreur]').forEach((e) => (e.textContent = ''));
+      form.querySelectorAll('[aria-invalid]').forEach((e) => e.removeAttribute('aria-invalid'));
+      if (!form.checkValidity()) {
+        for (const el of form.querySelectorAll<HTMLInputElement>(':invalid')) {
+          el.setAttribute('aria-invalid', 'true');
+          const zone = form.querySelector<HTMLElement>(`[data-erreur="${el.name}"]`);
+          if (zone) zone.textContent = el.validity.valueMissing ? 'Ce champ est obligatoire.' : 'Format invalide.';
+        }
+        form.querySelector<HTMLElement>(':invalid')?.focus();
+        return;
+      }
+      // Formulaire métier : un moyen de contact au moins
+      const tel = form.querySelector<HTMLInputElement>('[name="telephone"]'), mail = form.querySelector<HTMLInputElement>('[name="email"]');
+      if (form.querySelector('[name="formulaire"]') && tel && mail && !tel.value.trim() && !mail.value.trim()) {
+        const zone = form.querySelector<HTMLElement>('[data-erreur="telephone"]');
+        if (zone) zone.textContent = 'Indiquez un téléphone ou un e-mail.';
+        tel.setAttribute('aria-invalid', 'true'); tel.focus();
+        return;
+      }
+      const donnees = new FormData(form);
+      const champPhotos = form.querySelector<HTMLInputElement>('[data-photos]');
+      if (champPhotos?.files?.length) {
+        const max = Number(form.dataset.photosMax || 5);
+        const fichiers = [...champPhotos.files];
+        if (fichiers.length > max) {
+          const zone = form.querySelector<HTMLElement>('[data-erreur="photos"]');
+          if (zone) zone.textContent = `${max} photos au plus.`;
+          return;
+        }
+        statut.textContent = 'Préparation des photos…';
+        donnees.delete('photos[]');
+        for (const f of fichiers) donnees.append('photos[]', await reduire(f));
+      }
+      bouton.disabled = true;
+      statut.dataset.etat = '';
+      statut.textContent = 'Envoi en cours…';
+      try {
+        const rep = await fetch(form.action, { method: 'POST', body: donnees, headers: { Accept: 'application/json' } });
+        const r = await rep.json();
+        if (r.ok) {
+          form.reset();
+          evenement('contact-envoye', location.pathname);
+          statut.dataset.etat = 'ok';
+          statut.textContent = r.message;
+        } else {
+          statut.dataset.etat = 'erreur';
+          statut.textContent = r.message;
+          for (const [champ, msg] of Object.entries<string>(r.erreurs ?? {})) {
+            const zone = form.querySelector<HTMLElement>(`[data-erreur="${champ}"]`);
+            if (zone) zone.textContent = msg;
+            form.querySelector(`[name="${champ}"]`)?.setAttribute('aria-invalid', 'true');
+          }
+        }
+      } catch {
+        statut.dataset.etat = 'erreur';
+        statut.textContent = "L'envoi a échoué. Vérifiez votre connexion, ou appelez-nous.";
+      } finally {
+        bouton.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .fm { display: grid; gap: 44px; align-items: start; }
+  .fm--avec-coordonnees { grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); }
+  @media (max-width: 860px) { .fm--avec-coordonnees { grid-template-columns: 1fr; } }
+  .fm__form { display: flex; flex-direction: column; gap: 18px; }
+  .fm__grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px 20px; }
+  .fm__champ { display: flex; flex-direction: column; gap: 6px; }
+  .fm__champ--large { grid-column: 1 / -1; }
+  .fm__champ label { font-size: var(--fs-base); font-weight: 600; color: var(--c-text-strong); }
+  .fm__requis { color: var(--c-primary); }
+  .fm__option { font-weight: 400; color: var(--c-text-muted); font-size: 13px; }
+  .fm input, .fm select, .fm textarea { font: inherit; font-size: var(--fs-md); color: var(--c-text); background: var(--c-surface); border: 1.5px solid var(--c-border); border-radius: 10px; padding: 12px 14px; width: 100%; }
+  .fm textarea { resize: vertical; min-height: 140px; }
+  .fm input:focus, .fm select:focus, .fm textarea:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px oklch(0.48 0.11 158 / 0.18); }
+  .fm [aria-invalid='true'] { border-color: oklch(0.55 0.2 25); }
+  .fm__erreur { min-height: 0; font-size: 13px; color: oklch(0.5 0.2 25); }
+  .fm__erreur:empty { display: none; }
+  .fm__piege { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .fm__rgpd { font-size: 13px; color: var(--c-text-muted); max-width: 70ch; }
+  .fm__aide { font-size: 13px; color: var(--c-text-muted); margin-top: -6px; }
+  .fm__urgent { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--c-text-strong); cursor: pointer; }
+  .fm__urgent input { width: 20px; height: 20px; accent-color: var(--c-primary); }
+  .fm__plus { border: 1.5px solid var(--c-border); border-radius: 12px; padding: 4px 16px; background: var(--c-surface); }
+  .fm__plus[open] { padding-bottom: 16px; }
+  .fm__plus summary { cursor: pointer; padding: 12px 0; font-weight: 600; color: var(--c-text-strong); }
+  .fm__plus .fm__grille { margin-top: 4px; }
+  .fm input[type='file'] { padding: 10px; }
+  .fm__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+  .fm__actions .btn:disabled { opacity: 0.6; cursor: wait; }
+  .fm__statut { font-size: var(--fs-base); color: var(--c-text-muted); }
+  .fm__statut[data-etat='ok'] { color: var(--c-primary); font-weight: 600; }
+  .fm__statut[data-etat='erreur'] { color: oklch(0.5 0.2 25); font-weight: 600; }
+  /* Formulaire posé sur un fond sombre ou coloré (accent) */
+  :global(.on-dark) .fm__champ label, :global(.on-dark) .fm__urgent { color: var(--c-on-dark); }
+  :global(.on-dark) .fm__rgpd, :global(.on-dark) .fm__aide, :global(.on-dark) .fm__option { color: var(--c-on-dark-body); }
+  :global(.on-dark) .fm__requis { color: var(--c-on-dark); }
+  :global(.on-dark) .fm__rgpd a { color: var(--c-on-dark); text-decoration: underline; }
+  :global(.on-dark) .fm__statut[data-etat='ok'] { color: var(--c-on-dark); }
+  /* L'encadré « précisions » reste clair : textes sombres à l'intérieur */
+  :global(.on-dark) .fm__plus, :global(.on-dark) .fm__plus .fm__champ label { color: var(--c-ink, var(--c-text)); }
+  :global(.on-dark) .fm__plus .fm__aide, :global(.on-dark) .fm__plus .fm__option { color: var(--c-text-muted); }
+  /* carte : texte à gauche, formulaire dans une carte blanche à droite */
+  .fm--carte { grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: clamp(40px, 5.5vw, 80px); align-items: start; }
+  /* Titre en haut de sa colonne, qui reste visible pendant qu'on remplit un long formulaire (deux colonnes seulement) */
+  @media (min-width: 900px) { .fm--carte .fm__entete { position: sticky; top: var(--hauteur-entete-fixe, 120px); } }
+  .fm__entete { display: flex; flex-direction: column; gap: 24px; }
+  .fm__titre { font-size: var(--fs-h2-lg); line-height: 1.04; }
+  .fm__intro { font-size: var(--fs-xl); line-height: 1.6; }
+  .fm--carte .fm__form { gap: 18px; padding: clamp(24px, 3vw, 40px); border-radius: 24px; background: var(--c-surface); color: var(--c-ink, var(--c-text)); }
+  .fm--carte .fm__champ label { font-size: 15px; }
+  .fm--carte input { min-height: 52px; border-radius: 12px; border-color: #B8B8B3; font-size: var(--fs-md); }
+  .fm--carte .fm__actions .btn { width: 100%; background: var(--c-primary); color: #fff; font-size: var(--fs-md); font-weight: 600; margin-top: 8px; }
+  .fm--carte .fm__rgpd { font-size: 12.5px; }
+  /* carte blanche posée sur un fond sombre : textes sombres dans la carte, bouton orange */
+  :global(.on-dark) .fm--carte .fm__form .fm__champ label, :global(.on-dark) .fm--carte .fm__form .fm__urgent, :global(.on-dark) .fm--carte .fm__form .fm__requis { color: var(--c-ink, var(--c-text)); }
+  :global(.on-dark) .fm--carte .fm__form .fm__rgpd, :global(.on-dark) .fm--carte .fm__form .fm__aide, :global(.on-dark) .fm--carte .fm__form .fm__option, :global(.on-dark) .fm--carte .fm__form .fm__note { color: var(--c-text-muted); }
+  :global(.on-dark) .fm--carte .fm__form .fm__rgpd a { color: var(--c-text); }
+  :global(.on-dark) .fm--carte .fm__form .fm__statut[data-etat='ok'] { color: var(--c-primary); }
+  :global(.on-dark) .fm--carte .fm__actions .btn { background: var(--c-accent); color: var(--c-accent-ink); font-weight: 700; }
+  .fm__grille--pile { grid-template-columns: 1fr; gap: 18px; }
+  .fm__note { font-size: 14px; color: var(--c-text-muted); margin-top: -6px; }
+  .fm__coord { display: flex; flex-direction: column; gap: 8px; padding: 24px; border-radius: var(--radius-lg); background: var(--c-surface-alt); font-size: var(--fs-base); color: var(--c-text-body); }
+  :global(.bg-alt) .fm__coord { background: var(--c-surface); }
+  .fm__coord a { color: var(--c-text); }
+  .fm__tel { font-size: 22px; font-weight: 700; }
+  .fm__urgence span { color: var(--c-accent); }
+  .fm__zone { color: var(--c-text-muted); font-size: 13px; }
+</style>

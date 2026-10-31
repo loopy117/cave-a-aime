@@ -1,0 +1,29 @@
+---
+/** Fil d'Ariane calculé depuis l'URL et l'index du site (spec §8), avec BreadcrumbList. */
+import { indexSite } from '../lib/site';
+import { jsonLd } from '../lib/jsonld';
+import site from '../../data/site.json';
+interface Props { url: string; titre: string }
+const { url, titre } = Astro.props;
+const idx = await indexSite();
+const morceaux = url.split('/').filter(Boolean);
+const etapes = [{ label: 'Accueil', href: '/' }];
+for (let i = 1; i < morceaux.length; i++) {
+  const u = '/' + morceaux.slice(0, i).join('/');
+  const e = idx.get(u);
+  if (e && e.publie) etapes.push({ label: e.titre, href: u });
+}
+etapes.push({ label: titre, href: url });
+const jsonld = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: etapes.map((e, i) => ({ '@type': 'ListItem', position: i + 1, name: e.label, item: (Astro.site?.href.replace(/\/$/, '') ?? site.url) + e.href })) };
+---
+<nav class="ariane container" aria-label="Fil d'Ariane">
+  <ol>{etapes.map((e, i) => <li>{i < etapes.length - 1 ? <a href={e.href}>{e.label}</a> : <span aria-current="page">{e.label}</span>}</li>)}</ol>
+  <script type="application/ld+json" set:html={jsonLd(jsonld)} />
+</nav>
+<style>
+  .ariane { padding-block: 14px; }
+  .ariane ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: var(--fs-sm); color: var(--c-text-muted); }
+  .ariane li + li::before { content: '›'; margin-right: 6px; color: var(--c-eyebrow); }
+  .ariane a { color: var(--c-text-muted); }
+  .ariane a:hover { color: var(--c-link); }
+</style>

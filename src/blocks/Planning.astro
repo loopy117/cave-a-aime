@@ -1,0 +1,97 @@
+---
+/**
+ * Planning des entraînements, tiré de la collection equipes (un seul endroit pour les horaires).
+ * categories : une carte par type d'équipe (école, compétition, loisir) avec ses catégories et leurs créneaux.
+ * semaine : une colonne par jour, chaque créneau avec les équipes concernées.
+ */
+import Section from '../components/Section.astro';
+import { publies } from '../lib/contenu';
+import { urlElement } from '../lib/urls';
+import { plage, jourCourt, nomJour, parJour } from '../lib/creneaux';
+import taxonomies from '../../data/taxonomies.json';
+
+const { variant = 'categories', background, spacing, id, surtitre, titre, intro, categories, equipes: ids, lieu, courant } = Astro.props;
+const types = taxonomies.metiers as Record<string, string>;
+const voulus: string[] | undefined = ids?.map((x: string) => (x === '$courant.id' ? courant?.id : x));
+const toutes = (await publies('equipes'))
+  .filter((e: any) => !categories || categories.includes(e.data.categorie))
+  .filter((e: any) => !voulus || voulus.includes(e.id))
+  .sort((a: any, b: any) => (a.data.ordre ?? 100) - (b.data.ordre ?? 100));
+const groupes = Object.keys(types)
+  .map((t) => ({ type: t, libelle: types[t], equipes: toutes.filter((e: any) => e.data.categorie === t) }))
+  .filter((g) => g.equipes.length);
+const jours = parJour(toutes as any);
+// Sur la page d'une équipe, inutile de répéter son nom à chaque créneau
+const seule = toutes.length === 1;
+---
+{toutes.length > 0 && (variant === 'semaine' ? jours.length > 0 : true) && (
+  <Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+    {variant === 'categories' ? (
+      <div class="pl-cats">
+        {groupes.map((g) => (
+          <article class="pl-cat" data-type={g.type}>
+            <h3 class="pl-cat__titre">{g.libelle}</h3>
+            <ul class="pl-cat__liste" role="list">
+              {g.equipes.map((e: any) => (
+                <li class="pl-cat__ligne">
+                  <a class="pl-cat__nom" href={urlElement('equipes', e.id)}>{e.data.nom_court}</a>
+                  <span class="pl-cat__horaires">
+                    {e.data.creneaux.length ? e.data.creneaux.map((c: any) => `${jourCourt(c.jour)} ${plage(c)}`).join(' · ') : 'Horaires sur demande'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    ) : (
+      <ol class="pl-sem" role="list">
+        {jours.map((j) => (
+          <li class="pl-jour">
+            <h3 class="pl-jour__nom">{nomJour(j.jour)}</h3>
+            <ul class="pl-jour__creneaux" role="list">
+              {j.creneaux.map((x) => (
+                <li>
+                  <p class="pl-jour__heure">{plage(x.creneau)}</p>
+                  {!seule && <p class="pl-jour__equipes">{x.equipes.map((e: any, i: number) => <>{i > 0 && ', '}<a href={urlElement('equipes', e.id)}>{e.data.nom_court}</a></>)}</p>}
+                  {x.creneau.lieu && <p class="pl-jour__lieu">{x.creneau.lieu}</p>}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    )}
+    {lieu && <p class="pl-lieu">Toutes les séances ont lieu au {lieu}, sauf mention contraire.</p>}
+  </Section>
+)}
+<style>
+  /* Par type d'équipe */
+  .pl-cats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 22px; align-items: start; }
+  .pl-cat { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; }
+  .pl-cat__titre { margin: 0; padding: 22px 24px; background: var(--c-primary); color: var(--c-on-dark); font-size: var(--fs-h3); line-height: 1; border-bottom: 4px solid var(--c-primary); }
+  .pl-cat[data-type="ecole"] .pl-cat__titre { border-bottom-color: var(--c-bleu, var(--c-primary)); }
+  .pl-cat[data-type="competition"] .pl-cat__titre { border-bottom-color: var(--c-accent); }
+  .pl-cat__liste { list-style: none; margin: 0; padding: 6px 24px 14px; }
+  .pl-cat__ligne { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; padding: 12px 0; border-bottom: 1px solid var(--c-border-soft); }
+  .pl-cat__ligne:last-child { border-bottom: 0; }
+  .pl-cat__nom { font-weight: 700; color: var(--c-text-strong); text-decoration: none; }
+  .pl-cat__nom:hover, .pl-cat__nom:focus-visible { color: var(--c-link); text-decoration: underline; }
+  .pl-cat__horaires { color: var(--c-text-muted); text-align: right; }
+
+  /* Semaine */
+  .pl-sem { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 14px; }
+  .pl-jour { background: var(--c-surface-alt); border-radius: var(--radius-md); padding: 18px; }
+  :global(.bg-alt) .pl-jour { background: var(--c-surface); }
+  :global(.on-dark) .pl-jour { background: rgb(255 255 255 / 0.06); }
+  .pl-jour__nom { margin: 0 0 12px; font-size: 24px; line-height: 1; }
+  .pl-jour__creneaux { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .pl-jour__creneaux p { margin: 0; }
+  .pl-jour__heure { font-weight: 700; color: var(--c-text-strong); }
+  :global(.on-dark) .pl-jour__heure { color: var(--c-on-dark); }
+  .pl-jour__equipes, .pl-jour__lieu { color: var(--c-text-body); line-height: 1.45; }
+  :global(.on-dark) .pl-jour__equipes { color: var(--c-on-dark-body); }
+  .pl-jour__equipes a { color: inherit; }
+  .pl-lieu { margin: 18px 0 0; color: var(--c-text-muted); }
+  :global(.on-dark) .pl-lieu { color: var(--c-on-dark-muted); }
+</style>

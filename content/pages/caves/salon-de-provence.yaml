@@ -1,0 +1,48 @@
+titre: "Salon-de-Provence"
+statut: publie
+seo:
+  titre: "Cave à vin bio à Salon-de-Provence · La Cave à Aimé"
+  description: "Vins bio, spiritueux français, bières artisanales et fromages à la coupe ou en plateaux, avenue Georges Borel à Salon-de-Provence. Du mardi au samedi."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: "Cave à vin · Salon-de-Provence"
+    titre: "La Cave à Aimé à Salon-de-Provence"
+    texte: "127 allée du Tour de France, Résidence Lou Nais, 13300 Salon-de-Provence"
+    ctas:
+      - label: "Appeler la cave"
+        href: "tel:+33490422533"
+        style: primaire
+      - label: "Itinéraire"
+        href: "https://www.google.com/maps/search/?api=1&query=127+allée+du+Tour+de+France+Résidence+Lou+Nais+13300+Salon-de-Provence"
+        style: secondaire
+  - block: texte
+    variant: etroit
+    titre: "Cave à vin, fromages et bonnes choses"
+    contenu: |
+      En 2021, la Cave à Aimé s'est installée à Salon-de-Provence, sur l'avenue Georges Borel, direction Bel-Air. Toujours des vins bio, des spiritueux fabriqués en France, des bières artisanales et nos fromages à la coupe ou en plateaux, à emporter, à offrir ou à s'offrir.
+
+      Tous les jeudis matin : vente d'huîtres et de fruits de mer.
+  - block: features
+    variant: liste
+    background: alt
+    surtitre: Horaires et contact
+    titre: "Nous trouver à Salon-de-Provence"
+    items:
+      - icone: horloge
+        titre: Horaires
+        texte: "Du mardi au samedi : 10 h – 12 h 30 et 16 h – 19 h 30 · Dimanche et lundi : fermé"
+      - icone: repere
+        titre: Adresse
+        texte: "127 allée du Tour de France, Résidence Lou Nais, 13300 Salon-de-Provence"
+      - icone: telephone
+        titre: "Téléphone et e-mail"
+        texte: "04 90 42 25 33 · salon@cave-a-aime.fr"
+  - block: cta
+    variant: carte
+    titre: "Un plateau à préparer, une bouteille à mettre de côté ?"
+    texte: "Appelez la cave de Salon-de-Provence : on prépare votre commande pour votre passage."
+    ctas:
+      - label: "04 90 42 25 33"
+        href: "tel:+33490422533"
+        style: primaire

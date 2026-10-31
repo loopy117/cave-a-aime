@@ -1,0 +1,15 @@
+/* Retouches propres au site, chargées après le socle. Allure de l'ancien site de La Cave à Aimé :
+   fond noir, titres en Spectral SC espacés, accent orange, boutons droits. */
+@font-face { font-family: 'Spectral'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/spectral-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Spectral'; font-style: italic; font-weight: 400; font-display: swap; src: url('/fonts/spectral-latin-400-italic.woff2') format('woff2'); }
+@font-face { font-family: 'Spectral'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/spectral-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Spectral SC'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/spectral-sc-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Spectral SC'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/spectral-sc-latin-500-normal.woff2') format('woff2'); }
+
+html { color-scheme: dark; }
+body .nav__lien { font-family: var(--font-title); letter-spacing: 0.08em; }
+body .marque__baseline { color: var(--c-accent-text); font-style: italic; }
+body .eyebrow, body .hero__pastille { color: var(--c-accent-text); }
+body .ft__icone { background: #1F1917; color: var(--c-accent); }
+.btn { font-family: var(--font-title); letter-spacing: 0.08em; }
+.btn--secondaire { border-color: #E5DCDB; color: #E5DCDB; }

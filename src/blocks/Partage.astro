@@ -1,0 +1,67 @@
+---
+/**
+ * Boutons de partage de la page en cours (articles « À savoir »).
+ * - Mobile / navigateurs compatibles : menu de partage natif.
+ * - Sinon : liens LinkedIn, Facebook, X, e-mail et « Copier le lien ».
+ * Aucun script tiers, aucun cookie : de simples liens + l'API Web Share/Clipboard.
+ */
+import Section from '../components/Section.astro';
+const { background, spacing = 'compact', id } = Astro.props;
+---
+<Section {background} {spacing} {id} largeur="etroite">
+  <div class="partage" data-partage data-imprimer="non">
+    <button type="button" class="partage__bouton" data-partage-natif hidden>
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Partager l'article
+    </button>
+    <div class="partage__liens" data-partage-liens>
+      <span class="partage__titre">Partager :</span>
+      <a class="partage__lien" data-reseau="linkedin" target="_blank" rel="noopener">LinkedIn</a>
+      <a class="partage__lien" data-reseau="facebook" target="_blank" rel="noopener">Facebook</a>
+      <a class="partage__lien" data-reseau="x" target="_blank" rel="noopener">X</a>
+      <a class="partage__lien" data-reseau="email">E-mail</a>
+      <button type="button" class="partage__lien" data-partage-copier>Copier le lien</button>
+      <span class="partage__ok" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+</Section>
+
+<style>
+  .partage { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: var(--fs-sm); }
+  .partage__titre { color: var(--c-text-muted); font-weight: 600; }
+  .partage__liens { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .partage__bouton, .partage__lien { font: inherit; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text-strong); text-decoration: none; cursor: pointer; }
+  .partage__bouton { background: var(--c-marque-1, var(--c-primary)); border-color: transparent; color: #fff; font-weight: 600; }
+  .partage__bouton:hover { background: var(--c-ink); }
+  .partage__lien:hover { border-color: var(--c-marque-1, var(--c-primary)); color: var(--c-marque-1, var(--c-primary)); }
+  .partage__ok { color: var(--c-marque-1, var(--c-primary)); font-weight: 600; }
+</style>
+
+<script>
+  document.querySelectorAll('[data-partage]').forEach(function (bloc) {
+    var url = location.href.split('#')[0];
+    var titre = document.title;
+    var u = encodeURIComponent(url), t = encodeURIComponent(titre);
+    var liens: Record<string, string> = {
+      linkedin: 'https://www.linkedin.com/sharing/share-offsite/?url=' + u,
+      facebook: 'https://www.facebook.com/sharer/sharer.php?u=' + u,
+      x: 'https://twitter.com/intent/tweet?url=' + u + '&text=' + t,
+      email: 'mailto:?subject=' + t + '&body=' + encodeURIComponent('Un article qui pourrait vous intéresser : ' + url),
+    };
+    bloc.querySelectorAll('[data-reseau]').forEach(function (a) {
+      (a as HTMLAnchorElement).href = liens[(a as HTMLElement).getAttribute('data-reseau') as string];
+    });
+    var natif = bloc.querySelector('[data-partage-natif]') as HTMLElement | null;
+    if (natif && (navigator as any).share) {
+      natif.hidden = false;
+      natif.addEventListener('click', function () { (navigator as any).share({ title: titre, url: url }).catch(function () {}); });
+    }
+    var copier = bloc.querySelector('[data-partage-copier]');
+    var ok = bloc.querySelector('.partage__ok');
+    if (copier && ok) copier.addEventListener('click', function () {
+      var fini = function () { ok!.textContent = 'Lien copié'; setTimeout(function () { ok!.textContent = ''; }, 2500); };
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(fini, function () { prompt('Copiez ce lien :', url); });
+      else prompt('Copiez ce lien :', url);
+    });
+  });
+</script>

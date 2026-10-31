@@ -1,0 +1,99 @@
+---
+// Polices hébergées avec le site (paquets @fontsource), propres à chaque site : src/site/polices.ts
+import * as polices from '../site/polices';
+// Fichiers de police préchargés : titre et texte (un seul si le site n'a qu'une police)
+const prechargees = [...new Set([(polices as any).policeTitre, (polices as any).policeTexte].filter(Boolean))] as string[];
+import '../styles/tokens.css';
+import '../styles/base.css';
+// Feuille d'impression : intégrée dans une balise <style media="print"> (reconnue par les outils d'écoconception,
+// ignorée par le navigateur pour l'affichage à l'écran)
+import impressionBrut from '../styles/impression.css?raw';
+const impression = impressionBrut.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{}:;,])\s*/g, '$1').trim();
+// Variantes d'allure (site.json › apparence), avant les retouches du site
+import '../styles/apparence.css';
+// Retouches propres au site (fichier du site, chargé après le socle)
+import '../site/site.css';
+import Header from '../partials/Header.astro';
+import Footer from '../partials/Footer.astro';
+import BoutonModifier from '../partials/BoutonModifier.astro';
+import FilAriane from '../partials/FilAriane.astro';
+import siteBrut from '../../data/site.json';
+import partage from '../../data/partage.json';
+import type { Site } from '../schemas/site';
+import { graphe, type TypePage } from '../lib/donnees-structurees';
+import { jsonLd } from '../lib/jsonld';
+const site = siteBrut as unknown as Site;
+
+interface Props {
+  titre: string;
+  seo?: { titre?: string; description?: string; noindex?: boolean };
+  url: string;
+  gabarit?: 'standard' | 'pleine-largeur' | 'landing';
+  filAriane?: boolean;
+  /** Données structurées propres à la page (ex. Service), ajoutées au graphe entreprise + site + page. */
+  jsonld?: Record<string, unknown>[];
+  typePage?: TypePage;
+}
+const { titre, seo = {}, url, gabarit = 'standard', filAriane = url !== '/', jsonld = [], typePage } = Astro.props;
+const titreSeo = seo.titre ?? `${titre} — ${site.nom}`;
+const base = Astro.site?.href.replace(/\/$/, '') ?? site.url;
+const canonique = base + (url === '/' ? '/' : url);
+const noindex = seo.noindex || import.meta.env.NOINDEX === '1' || process.env.NOINDEX === '1';
+// Pas de données structurées sur une page non indexable (404, remerciement…)
+// Image de partage (réseaux sociaux) générée au build par scripts/partage.mjs, une par page indexable
+const imagePartage = seo.noindex ? null : `${base}/partage/${url === '/' ? 'accueil' : url.replace(/^\/|\/$/g, '').replace(/\//g, '--')}.png`;
+const donnees = seo.noindex ? [] : [graphe(site, base, { url, titre, description: seo.description, type: typePage, extras: jsonld })];
+// Allure du site (site.json › apparence) : classes du body lues par src/styles/apparence.css et les partials
+// (site.json est lu brut : les valeurs par défaut du schéma ne sont pas appliquées, d'où les « ?? »)
+const ap: Partial<NonNullable<Site['apparence']>> = site.apparence ?? {};
+const classesApparence = [
+  (ap.entete ?? 'classique') !== 'classique' && `ap-entete-${ap.entete}`,
+  ap.entete_sur_photo && 'ap-entete-sur-photo',
+  (ap.pied ?? 'bande') !== 'bande' && `ap-pied-${ap.pied}`,
+  (ap.surtitres ?? 'capitales') !== 'capitales' && `ap-surtitres-${ap.surtitres}`,
+  (ap.cartes ?? 'cadre') !== 'cadre' && `ap-cartes-${ap.cartes}`,
+].filter(Boolean) as string[];
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <style is:inline media="print" set:html={impression}></style>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titreSeo}</title>
+    {seo.description && <meta name="description" content={seo.description} />}
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={canonique} />
+    <meta property="og:title" content={titreSeo} />
+    {seo.description && <meta property="og:description" content={seo.description} />}
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonique} />
+    <meta property="og:site_name" content={site.nom} />
+    {imagePartage && <meta property="og:image" content={imagePartage} />}
+    {imagePartage && <meta property="og:image:width" content="1200" />}
+    {imagePartage && <meta property="og:image:height" content="630" />}
+    {imagePartage && <meta property="og:image:alt" content={titreSeo} />}
+    <meta name="twitter:card" content={imagePartage ? 'summary_large_image' : 'summary'} />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    {partage.favicon_svg && <link rel="icon" href="/favicon.svg" type="image/svg+xml" />}
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content={partage.fond} />
+    {prechargees.map((p) => <link rel="preload" href={p} as="font" type="font/woff2" crossorigin />)}
+    {donnees.map((d) => <script type="application/ld+json" set:html={jsonLd(d)} />)}
+  </head>
+  <body class:list={classesApparence}>
+    <a class="lien-evitement" href="#contenu">Aller au contenu</a>
+    <Header courant={url} landing={gabarit === 'landing'} />
+    <main id="contenu" tabindex="-1">
+      {filAriane && <FilAriane url={url} titre={titre} />}
+      <slot />
+    </main>
+    <Footer />
+    <BoutonModifier />
+    <!-- Script propre au site (src/site/script.ts, vide par défaut) -->
+    <script>import '../site/script';</script>
+    <!-- Mesure d'audience sans cookie (src/lib/mesure.ts) : seuls les vrais navigateurs sont comptés -->
+    <script>import '../lib/mesure';</script>
+  </body>
+</html>

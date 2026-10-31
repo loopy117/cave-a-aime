@@ -1,0 +1,7 @@
+---
+import Base from '../layouts/Base.astro';
+import Sections from '../components/Sections.astro';
+---
+<Base titre="Page introuvable" seo={{ noindex: true }} url="/404" filAriane={false}>
+  <Sections sections={[{ block: 'hero', variant: 'minimal', titre: 'Cette page n\'existe pas', texte: 'Le lien est peut-être ancien ou mal recopié.', ctas: [{ label: 'Retour à l\'accueil', href: '/', style: 'primaire' }, { label: 'Nous contacter', href: '/contact', style: 'secondaire' }] }]} />
+</Base>

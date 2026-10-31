@@ -1,0 +1,59 @@
+{
+  "colonnes": [
+    {
+      "titre": "Nos caves",
+      "liens": [
+        {
+          "page": "/caves/merindol",
+          "label": "Mérindol, cave et bar à vin"
+        },
+        {
+          "page": "/caves/lauris",
+          "label": "Lauris"
+        },
+        {
+          "page": "/caves/salon-de-provence",
+          "label": "Salon-de-Provence"
+        },
+        {
+          "page": "/caves/cheval-blanc",
+          "label": "Cheval-Blanc"
+        }
+      ]
+    },
+    {
+      "titre": "La maison",
+      "liens": [
+        {
+          "page": "/bar-a-vin",
+          "label": "Bar à vin"
+        },
+        {
+          "page": "/fromages",
+          "label": "Fromages et plateaux"
+        },
+        {
+          "page": "/evenements",
+          "label": "Made In Luberon Events"
+        },
+        {
+          "page": "/contact",
+          "label": "Contact"
+        }
+      ]
+    }
+  ],
+  "devise": "L'abus d'alcool est dangereux pour la santé, à consommer avec modération.",
+  "legal": [
+    {
+      "page": "/mentions-legales"
+    },
+    {
+      "page": "/confidentialite"
+    },
+    {
+      "page": "/accessibilite"
+    }
+  ],
+  "logo_taille": 40
+}

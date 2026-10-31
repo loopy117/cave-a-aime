@@ -1,0 +1,248 @@
+---
+import Logo from './Logo.astro';
+import site from '../../data/site.json';
+import piedDePage from '../../data/footer.json';
+import Icone from '../components/Icone.astro';
+// Devise facultative du site (data/footer.json, champ « devise »), affichée après la baseline ; taille du logo ;
+// « contact » : bandeau des coordonnées en tête du pied de page (titre, phrase, téléphone en grand, e-mail, lieu,
+// horaires et, si site.json › horaires_detail est rempli, « Joignables maintenant » calculé à l'heure de Paris)
+// « adhesions » : logos des associations ou réseaux dont l'entreprise est membre (fichier dans public/, lien facultatif)
+const { devise, logo_taille: logoTaille = 52, contact, adhesions = [] } = piedDePage as { devise?: string; logo_taille?: number; contact?: { titre?: string; texte?: string; ouvert?: string }; adhesions?: { nom: string; logo: string; lien?: string; hauteur?: number }[] };
+import { navigation } from '../lib/site';
+import { sortant, NOUVEL_ONGLET } from '../lib/liens';
+import Ecoindex from './Ecoindex.astro';
+const nav = await navigation();
+const tel = 'tel:+33' + site.telephone.replace(/\s/g, '').replace(/^0/, '');
+const annee = new Date().getFullYear();
+const siret = (site as any).siret;
+const s = site as any;
+const plages = (s.horaires_detail ?? []) as { jours: string[]; ouverture: string; fermeture: string }[];
+// Pied « grand » (site.json › apparence.pied) : téléphone en très grand, adresse et horaires jour par jour en colonnes
+const grand = s.apparence?.pied === 'grand';
+const JOURS_FR = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+const heure = (h: string) => h.replace(/^0/, '').replace(':00', ' h').replace(':', ' h ');
+// Jours consécutifs aux mêmes horaires regroupés (« Samedi et dimanche », « Du lundi au jeudi »)
+const semaine: { jours: string; plages: string }[] = [];
+{
+  const cle = JOURS_FR.map((j) => plages.filter((p) => p.jours.includes(j)).sort((a, b) => a.ouverture.localeCompare(b.ouverture)).map((p) => `${heure(p.ouverture)} – ${heure(p.fermeture)}`).join(', ') || 'Fermé');
+  for (let i = 0; i < 7; ) {
+    let f = i;
+    while (f + 1 < 7 && cle[f + 1] === cle[i]) f++;
+    const nom = (j: number) => JOURS_FR[j];
+    const jours = f === i ? nom(i) : f === i + 1 ? `${nom(i)} et ${nom(f)}` : `du ${nom(i)} au ${nom(f)}`;
+    semaine.push({ jours: jours.charAt(0).toUpperCase() + jours.slice(1), plages: cle[i] });
+    i = f + 1;
+  }
+}
+const adresseAffichee = s.afficher_adresse && s.adresse?.rue;
+const itineraire = adresseAffichee ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${s.adresse.rue}, ${s.adresse.code_postal ?? ''} ${s.adresse.ville}`)}` : null;
+const lieu = [s.adresse?.ville && (s.adresse.code_postal ? `${s.adresse.ville} (${s.adresse.code_postal.slice(0, 2)})` : s.adresse.ville), s.zone_resume].filter(Boolean).join(' · ');
+---
+{grand ? (
+<footer class="footer footer--grand on-dark">
+  <div class="container fg">
+    <div class="fg__haut">
+      <div class="fg__accroche">
+        <p class="fg__titre">{contact?.titre ?? 'Nous joindre'}</p>
+        {contact?.texte && <p class="fg__phrase">{contact.texte}</p>}
+      </div>
+      <div class="fg__joindre">
+        {site.telephone && <a class="fg__tel" href={tel}>{site.telephone}</a>}
+        {site.email && <a class="fg__mail" href={`mailto:${site.email}`}>{site.email}</a>}
+      </div>
+    </div>
+    <div class="fg__colonnes">
+      {adresseAffichee && (
+        <div class="fg__col">
+          <h2 class="fg__intitule">Adresse</h2>
+          <address class="fg__adresse">{s.adresse.rue}<br />{s.adresse.code_postal} {s.adresse.ville}</address>
+          {itineraire && <a class="fg__lien" href={itineraire} {...sortant(itineraire, Astro.site)}>Itinéraire<Fragment set:html={NOUVEL_ONGLET} /></a>}
+        </div>
+      )}
+      {(plages.length > 0 || s.horaires) && (
+        <div class="fg__col">
+          <h2 class="fg__intitule">Horaires</h2>
+          {plages.length > 0 && <p class="fg__statut-ligne"><span class="footer__statut" data-horaires={JSON.stringify(plages)} data-ouvert={contact?.ouvert} hidden></span></p>}
+          {plages.length > 0
+            ? <dl class="fg__semaine">{semaine.map((l) => <div class:list={[l.plages === 'Fermé' && 'fg__ferme']}><dt>{l.jours}</dt><dd>{l.plages.split(', ').map((x) => <span>{x}</span>)}</dd></div>)}</dl>
+            : <p>{s.horaires}</p>}
+        </div>
+      )}
+      <nav class="fg__col" aria-label="Pied de page">
+        <h2 class="fg__intitule">Sur le site</h2>
+        <ul class="fg__liste">
+          {nav.menu.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+          {nav.colonnes.flatMap((c) => c.liens).map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+        </ul>
+      </nav>
+    </div>
+    <div class="fg__bas">
+      <a class="footer__marque" href="/" aria-label={`${site.nom}, accueil`}><Logo taille={logoTaille} variante="sombre" /></a>
+      {devise && <span class="footer__devise">{devise}</span>}
+      <span class="fg__legal">
+        {nav.legal.map((l) => <a href={l.href}>{l.label}</a>)}
+        <a href="/plan-du-site">Plan du site</a>
+      </span>
+      {adhesions.length > 0 && (
+        <div class="footer__adhesions">
+          <span class="footer__adhesions-titre">Membre de</span>
+          {adhesions.map((a) => {
+            const img = <img src={a.logo} alt={a.nom} height={a.hauteur ?? 40} style={`height:${a.hauteur ?? 40}px`} loading="lazy" decoding="async" />;
+            return a.lien ? <a class="footer__adhesion" href={a.lien} {...sortant(a.lien, Astro.site)}>{img}<Fragment set:html={NOUVEL_ONGLET} /></a> : <span class="footer__adhesion">{img}</span>;
+          })}
+        </div>
+      )}
+      <div class="fg__fin">
+        <p class="fg__copyright">© {annee} {site.nom}, {site.adresse.ville}{siret && `, SIRET ${siret}`}</p>
+        <Ecoindex />
+      </div>
+    </div>
+  </div>
+</footer>
+) : (
+<footer class="footer on-dark">
+  <div class="container footer__inner">
+    {contact && (site.telephone || site.email) && (
+      <div class="footer__contact">
+        <div class="footer__contact-texte">
+          <p class="footer__contact-titre">{contact.titre ?? 'Parlons de votre projet'}</p>
+          {contact.texte && <p class="footer__contact-phrase">{contact.texte}</p>}
+        </div>
+        <div class="footer__moyens">
+          {site.telephone && <a class="footer__tel" href={tel}><span class="footer__pastille"><Icone nom="telephone" taille={20} /></span>{site.telephone}</a>}
+          <div class="footer__details">
+            {site.email && <a class="footer__mail" href={`mailto:${site.email}`}>{site.email}</a>}
+            {lieu && <span>{lieu}</span>}
+            {(s.horaires || plages.length > 0) && (
+              <span class="footer__horaires">
+                {plages.length > 0 && <span class="footer__statut" data-horaires={JSON.stringify(plages)} data-ouvert={contact?.ouvert} hidden></span>}
+                {s.horaires}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    <div class="footer__ligne">
+      <a class="footer__marque" href="/" aria-label={`${site.nom}, accueil`}><Logo taille={logoTaille} variante="sombre" /></a>
+      <span class="footer__par">{site.baseline}</span>
+      {devise && <span class="footer__devise">· {devise}</span>}
+    </div>
+    <div class="footer__ligne footer__droite">
+      {!contact && site.telephone && <a href={tel}>{site.telephone}</a>}
+      {!contact && site.email && <a href={`mailto:${site.email}`}>{site.email}</a>}
+      {nav.legal.map((l) => <a href={l.href}>{l.label}</a>)}
+      <a href="/plan-du-site">Plan du site</a>
+    </div>
+    {nav.colonnes.filter((c) => c.liens.length).length > 0 && (
+      <nav class="footer__liens" aria-label="Pied de page">
+        {nav.colonnes.flatMap((c) => c.liens).map((l) => <a href={l.href}>{l.label}</a>)}
+      </nav>
+    )}
+    {adhesions.length > 0 && (
+      <div class="footer__adhesions">
+        <span class="footer__adhesions-titre">Membre de</span>
+        {adhesions.map((a) => {
+          const img = <img src={a.logo} alt={a.nom} height={a.hauteur ?? 40} style={`height:${a.hauteur ?? 40}px`} loading="lazy" decoding="async" />;
+          return a.lien ? <a class="footer__adhesion" href={a.lien} {...sortant(a.lien, Astro.site)}>{img}<Fragment set:html={NOUVEL_ONGLET} /></a> : <span class="footer__adhesion">{img}</span>;
+        })}
+      </div>
+    )}
+    <div class="footer__bas">
+      <p class="footer__copyright">© {annee} {site.nom} · {site.adresse.ville}{siret && ` · SIRET ${siret}`}</p>
+      <Ecoindex />
+    </div>
+  </div>
+</footer>
+)}
+<script>
+  // « Joignables maintenant » / prochaine ouverture, à l'heure de Paris (horaires de site.json › horaires_detail)
+  const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+  for (const el of document.querySelectorAll<HTMLElement>('.footer__statut[data-horaires]')) {
+    try {
+      const plages = JSON.parse(el.dataset.horaires || '[]') as { jours: string[]; ouverture: string; fermeture: string }[];
+      const p = Object.fromEntries(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+      const jour = JOURS.indexOf(String(p.weekday).toLowerCase());
+      const maintenant = `${p.hour}:${p.minute}`;
+      if (jour < 0) continue;
+      const ouvert = plages.some((h) => h.jours.includes(JOURS[jour]) && maintenant >= h.ouverture && maintenant < h.fermeture);
+      let texte = el.dataset.ouvert || 'Joignables maintenant';
+      if (!ouvert) {
+        texte = '';
+        for (let d = 0; d < 8 && !texte; d++) {
+          const j = JOURS[(jour + d) % 7];
+          const ouv = plages.filter((h) => h.jours.includes(j) && (d > 0 || h.ouverture > maintenant)).map((h) => h.ouverture).sort()[0];
+          if (ouv) texte = `Réouverture ${d === 0 ? "aujourd'hui" : d === 1 ? 'demain' : j} à ${ouv.replace(':', ' h ')}`.replace(' h 00', ' h');
+        }
+      }
+      if (!texte) continue;
+      el.textContent = texte;
+      el.classList.toggle('footer__statut--ouvert', ouvert);
+      el.hidden = false;
+    } catch { /* horaires illisibles : seuls les horaires en texte restent */ }
+  }
+</script>
+<style>
+  .footer { background: var(--c-primary-deep, var(--c-ink)); padding: 36px 0 28px; color: var(--c-footer-ink, #E1ECF0); font-size: 15px; }
+  .footer__inner { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 18px 32px; }
+  .footer__ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .footer__droite { gap: 8px 22px; }
+  .footer a { color: var(--c-footer-ink, #E1ECF0); }
+  .footer a:hover { color: #fff; text-decoration: underline; }
+  .footer__devise { font-style: italic; color: var(--c-footer-devise, #D2E2E8); }
+  .footer__liens { width: 100%; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+  /* Adhésions (data/footer.json › adhesions) : logos des réseaux dont l'entreprise est membre */
+  .footer__adhesions { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; font-size: 14px; color: var(--c-footer-muted, #B9CDD5); }
+  .footer__adhesion { display: inline-flex; }
+  .footer__adhesion img { display: block; width: auto; max-width: 220px; }
+  .footer__adhesions a:hover { text-decoration: none; opacity: .85; }
+  /* Bandeau des coordonnées (data/footer.json › contact) */
+  .footer__contact { width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 22px 40px; padding: 4px 0 26px; margin-bottom: 4px; border-bottom: 1px solid var(--c-border-dark); }
+  .footer__contact-titre { margin: 0; font-family: var(--font-title, inherit); font-size: clamp(22px, 3vw, 30px); line-height: 1.15; color: #fff; }
+  .footer__contact-phrase { margin: 6px 0 0; max-width: 46ch; color: var(--c-footer-ink, #E1ECF0); }
+  .footer__moyens { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; }
+  .footer__tel { display: inline-flex; align-items: center; gap: 12px; font-family: var(--font-title, inherit); font-size: clamp(24px, 3.4vw, 32px); font-weight: 600; letter-spacing: 0.01em; color: #fff !important; white-space: nowrap; }
+  .footer__tel:hover { text-decoration: none !important; }
+  .footer__tel:hover .footer__pastille { transform: scale(1.06); }
+  .footer__pastille { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--c-accent); color: var(--c-accent-ink, #fff); transition: transform .15s; }
+  .footer__details { display: flex; flex-direction: column; gap: 4px; font-size: 15px; }
+  .footer__mail { font-weight: 600; }
+  .footer__horaires { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--c-footer-muted, #B9CDD5); }
+  .footer__statut { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--c-footer-ink, #E1ECF0); }
+  .footer__statut::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c-footer-muted, #B9CDD5); }
+  .footer__statut--ouvert { color: #fff; }
+  .footer__statut--ouvert::before { background: #3DDC97; box-shadow: 0 0 0 4px rgb(61 220 151 / .18); }
+  /* Trois pulsations puis arrêt : pas d'animation en boucle (écoconception, RGESN 4.1) */
+  @media (prefers-reduced-motion: no-preference) { .footer__statut--ouvert::before { animation: footer-pouls 2.4s ease-in-out 3; } }
+  @keyframes footer-pouls { 50% { box-shadow: 0 0 0 7px rgb(61 220 151 / 0); } }
+  /* ---- Pied « grand » ---- */
+  .footer--grand { padding: clamp(56px, 8vw, 104px) 0 28px; font-size: var(--fs-base); }
+  .fg { display: flex; flex-direction: column; gap: clamp(40px, 6vw, 72px); }
+  .fg__haut { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 28px 48px; padding-bottom: clamp(32px, 5vw, 56px); border-bottom: 1px solid var(--c-border-dark); }
+  .fg__accroche { max-width: 34ch; }
+  .fg__titre { margin: 0; font-family: var(--font-title); font-weight: var(--fw-title, 600); font-size: clamp(26px, 3.2vw, 40px); line-height: 1.1; color: #fff; text-wrap: balance; }
+  .fg__phrase { margin: 12px 0 0; color: var(--c-footer-ink, #E1ECF0); }
+  .fg__joindre { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .fg__tel { font-family: var(--font-title); font-weight: var(--fw-title, 600); font-size: clamp(40px, 7.4vw, 92px); line-height: 0.95; letter-spacing: -0.01em; color: var(--c-footer-tel, #fff) !important; white-space: nowrap; font-variant-numeric: lining-nums; }
+  .fg__tel:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 8px; }
+  .fg__mail { font-size: var(--fs-md); }
+  .fg__colonnes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 36px clamp(32px, 5vw, 72px); }
+  .fg__col { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+  .fg__intitule { margin: 0 0 2px; font-family: var(--font-title); font-weight: 400; font-family: var(--font-surtitre, var(--font-title)); font-style: var(--surtitre-style, italic); font-size: var(--fs-surtitre, 19px); color: var(--c-footer-muted, #B9CDD5); }
+  .fg__adresse { font-style: normal; line-height: 1.6; color: #fff; font-size: var(--fs-md); }
+  .fg__lien { font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+  .fg__statut-ligne { margin: 0; }
+  .fg__semaine { margin: 0; display: grid; gap: 6px; width: 100%; max-width: 380px; }
+  .fg__semaine div { display: flex; justify-content: space-between; gap: 18px; padding-bottom: 6px; border-bottom: 1px solid var(--c-border-dark); }
+  .fg__semaine dt { color: #fff; }
+  .fg__semaine dd { margin: 0; display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--c-footer-ink, #E1ECF0); }
+  .fg__ferme dt, .fg__ferme dd { color: var(--c-footer-muted, #B9CDD5); font-style: italic; }
+  .fg__liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .fg__bas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding-top: 24px; border-top: 1px solid var(--c-border-dark); font-size: 14px; color: var(--c-footer-muted, #B9CDD5); }
+  .fg__legal { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-left: auto; }
+  .fg__fin { width: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+  .fg__copyright { margin: 0; }
+  .footer__bas { width: 100%; padding-top: 18px; border-top: 1px solid var(--c-border-dark); font-size: 13px; color: var(--c-footer-muted, #B9CDD5);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+  .footer__copyright { margin: 0; }
+</style>

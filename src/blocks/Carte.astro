@@ -1,0 +1,85 @@
+---
+/**
+ * Carte « au clic » : rien n'est demandé à Google tant que le visiteur ne clique pas (pas de cookie, page légère).
+ * Au clic : carte Google Maps (Maps Embed API, clé de l'agence GOOGLE_MAPS_CLE fournie au build, restreinte aux
+ * domaines des sites). Sans clé : le bouton ouvre Google Maps dans un nouvel onglet. Lien « Itinéraire » toujours là.
+ * Lieu par défaut : adresse du site (rue si elle est affichée, sinon la ville) ; communes desservies en étiquettes.
+ */
+import Section from '../components/Section.astro';
+import Markdown from '../components/Markdown.astro';
+import siteBrut from '../../data/site.json';
+import type { Site } from '../schemas/site';
+const site = siteBrut as unknown as Site;
+const { variant = 'avec-texte', background, spacing, id, surtitre, titre, intro, lieu, zoom, texte, communes = true } = Astro.props;
+const a = site.adresse;
+const adresse = lieu || [site.afficher_adresse ? a.rue : '', `${a.code_postal} ${a.ville}`].filter(Boolean).join(', ');
+// Recherche Google : l'adresse seule (ville, ou rue si affichée), en France. Le nom de l'entreprise n'est ajouté que
+// si la rue est affichée : sinon Google ne trouve aucun lieu à ce nom et montre le monde entier.
+const requete = lieu || (site.afficher_adresse && a.rue ? `${site.nom}, ${adresse}, France` : `${adresse}, France`);
+const cle = (process.env.GOOGLE_MAPS_CLE || import.meta.env.PUBLIC_GOOGLE_MAPS_CLE || '').trim();
+const embed = cle ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(cle)}&q=${encodeURIComponent(requete)}&language=fr${zoom ? `&zoom=${zoom}` : ''}` : '';
+const ouvrir = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(requete)}`;
+const itineraire = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(requete)}`;
+const villes = communes ? (site.villes ?? []) : [];
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <div class:list={['carte', `carte--${variant}`]}>
+    {variant === 'avec-texte' && (texte || villes.length > 0) && (
+      <div class="carte__texte">
+        {texte && <Markdown source={texte} />}
+        {villes.length > 0 && <><p class="carte__titre-villes">Communes desservies</p><ul class="carte__villes">{villes.map((v) => <li>{v}</li>)}</ul></>}
+      </div>
+    )}
+    <figure class="carte__cadre" data-carte={embed || undefined}>
+      <div class="carte__fond" aria-hidden="true">
+        <svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
+          <rect width="600" height="400" fill="var(--c-surface-alt)" />
+          <path d="M-20 300 C 120 250, 220 330, 330 260 S 520 200, 640 240" stroke="#fff" stroke-width="18" fill="none" />
+          <path d="M80 -20 C 120 120, 60 220, 140 420" stroke="#fff" stroke-width="12" fill="none" />
+          <path d="M420 -20 C 380 100, 470 180, 430 420" stroke="#fff" stroke-width="10" fill="none" />
+          <path d="M-20 120 C 150 140, 300 80, 640 110" stroke="#fff" stroke-width="8" fill="none" />
+          <path d="M200 0 L 260 400 M 520 0 L 560 400 M 0 200 L 600 180" stroke="var(--c-border)" stroke-width="3" fill="none" />
+        </svg>
+        <svg class="carte__repere" viewBox="0 0 24 24" width="44" height="44"><path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12z" fill="var(--c-accent)" /><circle cx="12" cy="10" r="2.6" fill="#fff" /></svg>
+      </div>
+      <figcaption class="carte__legende">
+        <span class="carte__lieu">{adresse}</span>
+        <span class="carte__actions">
+          {embed
+            ? <button type="button" class="btn btn--primaire carte__afficher">Afficher la carte</button>
+            : <a class="btn btn--primaire" href={ouvrir} target="_blank" rel="noopener">Voir sur Google Maps<span class="visually-hidden"> (nouvel onglet)</span></a>}
+          <a class="btn btn--secondaire" href={itineraire} target="_blank" rel="noopener">Itinéraire<span class="visually-hidden"> (nouvel onglet)</span></a>
+        </span>
+        {embed && <span class="carte__note">La carte interactive est fournie par Google, qui reçoit votre adresse IP à l'affichage.</span>}
+      </figcaption>
+    </figure>
+  </div>
+</Section>
+<script>
+  for (const f of document.querySelectorAll<HTMLElement>('[data-carte]')) {
+    f.querySelector('.carte__afficher')?.addEventListener('click', () => {
+      const i = document.createElement('iframe');
+      i.src = f.dataset.carte!; i.title = 'Carte Google Maps'; i.loading = 'lazy';
+      i.referrerPolicy = 'strict-origin-when-cross-origin'; i.allowFullscreen = true; i.className = 'carte__iframe';
+      f.querySelector('.carte__fond')?.replaceWith(i);
+      f.querySelector('.carte__afficher')?.remove(); f.querySelector('.carte__note')?.remove();
+    });
+  }
+</script>
+<style>
+  .carte { display: grid; gap: clamp(24px, 4vw, 48px); align-items: center; }
+  .carte--avec-texte { grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+  .carte__texte { display: flex; flex-direction: column; gap: 14px; }
+  .carte__titre-villes { font-weight: 600; color: var(--c-text-strong); margin: 6px 0 0; }
+  .carte__villes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .carte__villes li { padding: 6px 12px; border-radius: 999px; background: var(--c-surface-alt); color: var(--c-text-body); font-size: 15px; }
+  .carte__cadre { margin: 0; border-radius: var(--radius-lg, 16px); overflow: hidden; border: 1px solid var(--c-border); background: var(--c-surface); }
+  .carte__fond { position: relative; aspect-ratio: 3 / 2; display: grid; place-items: center; }
+  .carte__fond > svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .carte__repere { position: relative; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.25)); }
+  :global(.carte__iframe) { display: block; width: 100%; aspect-ratio: 3 / 2; border: 0; }
+  .carte__legende { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; }
+  .carte__lieu { font-weight: 600; color: var(--c-text-strong); }
+  .carte__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .carte__note { font-size: 13px; color: var(--c-text-muted); }
+</style>

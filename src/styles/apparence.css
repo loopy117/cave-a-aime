@@ -1,0 +1,50 @@
+/* ==========================================================================
+   Variantes d'allure, choisies dans data/site.json › apparence.
+   Base.astro pose les classes ap-* sur <body> ; sans réglage, rien ne change.
+   Sélecteurs préfixés par « body. » : ils l'emportent sur les styles des
+   composants (classe + attribut Astro) sans !important.
+   ========================================================================== */
+
+/* --- Surtitres « phrase » : italique dans la police des titres, sans capitales ni pastille --- */
+body.ap-surtitres-phrase .eyebrow,
+body.ap-surtitres-phrase .ac__date,
+body.ap-surtitres-phrase .eq__type {
+  /* Police et style réglables (tokens.css) : --font-surtitre, --surtitre-style. Italique par défaut : prévoir une
+     police qui en a une vraie (sinon le navigateur penche les lettres, c'est laid). */
+  font-family: var(--font-surtitre, var(--font-title));
+  font-style: var(--surtitre-style, italic);
+  font-weight: 400;
+  font-size: var(--fs-surtitre, 19px);
+  letter-spacing: 0;
+  text-transform: none;
+}
+body.ap-surtitres-phrase .hero__pastille {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--c-on-dark-body, #fff);
+  font-family: var(--font-surtitre, var(--font-title));
+  font-style: var(--surtitre-style, italic);
+  font-size: var(--fs-surtitre, 19px);
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Héros sur fond clair : surtitre dans la couleur des surtitres du site (le blanc cassé y était illisible) */
+body.ap-surtitres-phrase .hero:not(.on-dark) .hero__pastille { color: var(--c-eyebrow, var(--c-accent-text, var(--c-text-strong))); }
+body.ap-surtitres-phrase .hero__pastille .point { display: none; }
+
+/* --- Cartes « nu » : éléments des grilles sans cadre, séparés par un filet --- */
+/* Classe doublée : les styles des composants Astro portent un attribut par classe (spécificité plus forte) */
+body.ap-cartes-nu .ft--grille-icones .ft__item.ft__item {
+  border: 0;
+  border-top: 1px solid var(--c-border);
+  border-radius: 0;
+  padding: 24px 0 0;
+}
+body.ap-cartes-nu .ft--grille-icones .ft__icone.ft__icone { background: none; width: auto; height: auto; justify-content: start; }
+body.ap-cartes-nu .ft--paires .ft__item.ft__item { background: none; border-top: 1px solid var(--c-border); border-radius: 0; padding-inline: 0; }
+
+/* --- En-tête centré : plus haut, le héros « affiche » laisse la place --- */
+@media (min-width: 1081px) {
+  body.ap-entete-centre .hero--affiche .hero__grille.hero__grille { padding-top: 200px; }
+}

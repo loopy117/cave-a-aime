@@ -1,0 +1,132 @@
+---
+/**
+ * Témoignages de clients (data/temoignages.json, recueillis par l'entreprise avec l'accord du client).
+ * cartes : jusqu'à 6 témoignages côte à côte ; citation : un seul, en grand, avec la photo s'il y en a une.
+ * Sélection : « elements » (dans cet ordre), sinon ceux de la réalisation ou du métier demandés, mis en avant d'abord
+ * puis les plus récents. Chaque témoignage rattaché à une réalisation renvoie vers sa page (sauf sur cette page même).
+ * Sans témoignage correspondant, le bloc n'affiche rien.
+ */
+import Section from '../components/Section.astro';
+import Etoiles from '../components/Etoiles.astro';
+import Img from '../components/Img.astro';
+import { temoignages as schema, type Temoignage } from '../schemas/temoignages';
+import { publies } from '../lib/contenu';
+import { urlElement } from '../lib/urls';
+import { collectionsDuSite } from '../schemas/modeles';
+import site from '../../data/site.json';
+
+const { variant = 'cartes', background, spacing, id, surtitre, titre, intro, elements, realisation, categorie, nombre = 3, courant } = Astro.props;
+const L = { voir_realisation: 'Voir la réalisation', ...((site as any).libelles ?? {}) };
+
+const fichiers = import.meta.glob('../../data/temoignages.json', { eager: true, import: 'default' });
+const brut = Object.values(fichiers)[0];
+const tous: Temoignage[] = brut ? schema.parse(brut).liste : [];
+
+const resoudre = (v?: string) => (v === '$courant.id' ? courant?.id : v === '$courant.categorie' ? courant?.data?.categorie : v);
+const voulueReal = resoudre(realisation);
+const voulueCat = resoudre(categorie);
+
+let choisis: Temoignage[];
+if (elements?.length) choisis = elements.map((x: string) => tous.find((t) => t.id === x)).filter(Boolean) as Temoignage[];
+else
+  choisis = tous
+    .filter((t) => !voulueReal || t.realisation === voulueReal)
+    .filter((t) => !voulueCat || t.categorie === voulueCat)
+    .sort((a, b) => Number(b.mis_en_avant) - Number(a.mis_en_avant) || (b.date ?? '').localeCompare(a.date ?? ''));
+choisis = choisis.slice(0, variant === 'citation' ? 1 : nombre);
+
+// Réalisations publiées : titre du lien, et pas de lien vers une réalisation retirée
+const realisations = choisis.some((t) => t.realisation) && collectionsDuSite().includes('realisations') ? await publies('realisations') : [];
+const lienDe = (t: Temoignage): { href: string; label: string; titre?: string } | undefined => {
+  if (t.realisation && t.realisation !== courant?.id) {
+    const r = realisations.find((e) => e.id === t.realisation);
+    if (r) return { href: urlElement('realisations', r.id), label: L.voir_realisation, titre: (r.data as any).titre };
+  }
+  if (t.lien && t.lien.href !== Astro.url.pathname) return { href: t.lien.href, label: t.lien.label };
+  return undefined;
+};
+const moisFr = (m?: string) => (m ? new Date(m + '-15T12:00:00').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '');
+const initiale = (n: string) => n.trim().charAt(0).toUpperCase();
+const seul = variant === 'citation' || choisis.length === 1;
+---
+{choisis.length > 0 && (
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  {seul ? (
+    choisis.map((t) => { const l = lienDe(t); return (
+      <figure class:list={['tm-cit', t.photo && 'tm-cit--photo']}>
+        {t.photo && <div class="tm-cit__photo"><Img image={t.photo} sizes="(max-width: 820px) 100vw, 360px" largeurs={[400, 720]} /></div>}
+        <div class="tm-cit__corps">
+          {t.note && <Etoiles note={t.note} taille={20} />}
+          <blockquote class="tm-cit__texte"><p>{t.texte}</p></blockquote>
+          <figcaption class="tm-qui">
+            <span class="tm-qui__nom">{t.auteur}</span>
+            {(t.precision || t.date) && <span class="tm-qui__detail">{[t.precision, moisFr(t.date)].filter(Boolean).join(', ')}</span>}
+          </figcaption>
+          {l && <a class="tm-lien" href={l.href}>{l.label}{l.titre && <span class="visually-hidden"> : {l.titre}</span>}</a>}
+        </div>
+      </figure>
+    ); })
+  ) : (
+    <ul class="tm-liste" role="list">
+      {choisis.map((t) => { const l = lienDe(t); return (
+        <li class="tm">
+          <figure class="tm__fig">
+            <div class="tm__haut">
+              <svg class="tm__guillemet" viewBox="0 0 48 36" width="34" height="26" aria-hidden="true"><path d="M0 36V22C0 9.6 6.4 2.3 19.2 0l2 5.2C14 7.1 10.6 11 10.2 17H20v19H0zm28 0V22C28 9.6 34.4 2.3 47.2 0l2 5.2C42 7.1 38.6 11 38.2 17H48v19H28z" /></svg>
+              {t.note && <Etoiles note={t.note} taille={17} />}
+            </div>
+            <blockquote class="tm__texte"><p>{t.texte}</p></blockquote>
+            <figcaption class="tm-qui tm-qui--ligne">
+              {t.photo
+                ? <span class="tm-qui__avatar"><Img image={{ ...t.photo, alt: '' }} sizes="48px" largeurs={[96]} /></span>
+                : <span class="tm-qui__initiale" aria-hidden="true">{initiale(t.auteur)}</span>}
+              <span class="tm-qui__bloc">
+                <span class="tm-qui__nom">{t.auteur}</span>
+                {(t.precision || t.date) && <span class="tm-qui__detail">{[t.precision, moisFr(t.date)].filter(Boolean).join(', ')}</span>}
+              </span>
+            </figcaption>
+          </figure>
+          {l && <a class="tm-lien" href={l.href}>{l.label}{l.titre && <span class="visually-hidden"> : {l.titre}</span>}</a>}
+        </li>
+      ); })}
+    </ul>
+  )}
+</Section>
+)}
+<style>
+  /* Plusieurs témoignages : colonnes égales, le texte du client en premier, le nom en pied */
+  .tm-liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: clamp(18px, 2.4vw, 28px); }
+  .tm { display: flex; flex-direction: column; gap: 16px; padding: clamp(24px, 2.6vw, 32px); border-radius: var(--radius-xl); background: var(--c-surface-alt); }
+  .tm__fig { margin: 0; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+  .tm__haut { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .tm__guillemet { fill: var(--c-accent); opacity: 0.85; }
+  .tm__texte { margin: 0; flex: 1; }
+  .tm__texte p { margin: 0; font-size: 16.5px; line-height: 1.62; color: var(--c-text-body, var(--c-text)); }
+
+  .tm-qui { display: flex; flex-direction: column; gap: 2px; }
+  .tm-qui--ligne { flex-direction: row; align-items: center; gap: 12px; }
+  .tm-qui__bloc { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tm-qui__nom { font-weight: 650; color: var(--c-text); }
+  .tm-qui__detail { font-size: 14px; color: var(--c-text-muted); }
+  .tm-qui__initiale, .tm-qui__avatar { flex: none; width: 46px; height: 46px; border-radius: 50%; overflow: hidden; }
+  .tm-qui__initiale { display: grid; place-items: center; background: var(--c-primary); color: #fff; font-weight: 700; font-size: 18px; }
+  .tm-qui__avatar :global(img) { width: 100%; height: 100%; object-fit: cover; }
+
+  .tm-lien { align-self: flex-start; font-weight: 600; font-size: 15px; }
+
+  /* Un seul témoignage : la phrase du client en grand, dans la police des titres */
+  .tm-cit { margin: 0; max-width: 900px; display: grid; gap: clamp(22px, 4vw, 48px); align-items: center; }
+  .tm-cit--photo { max-width: 1040px; grid-template-columns: minmax(220px, 340px) 1fr; }
+  @media (max-width: 820px) { .tm-cit--photo { grid-template-columns: 1fr; } }
+  .tm-cit__photo { border-radius: var(--radius-image, var(--radius-xl)); overflow: hidden; aspect-ratio: 4 / 5; }
+  .tm-cit__photo :global(img) { width: 100%; height: 100%; object-fit: cover; }
+  .tm-cit__corps { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; padding-left: clamp(18px, 2.4vw, 28px); border-left: 3px solid var(--c-accent); }
+  .tm-cit__texte { margin: 0; }
+  .tm-cit__texte p { margin: 0; font-family: var(--font-title); font-size: clamp(21px, 2.4vw, 28px); line-height: 1.38; color: var(--c-text); text-wrap: pretty; }
+
+  :global(.bg-alt) .tm { background: var(--c-surface); }
+  :global(.on-dark) .tm { background: oklch(1 0 0 / 0.07); }
+  :global(.on-dark) .tm__texte p { color: var(--c-on-dark-body); }
+  :global(.on-dark) .tm-cit__texte p, :global(.on-dark) .tm-qui__nom { color: var(--c-on-dark); }
+  :global(.on-dark) .tm-qui__detail { color: var(--c-on-dark-body); }
+</style>

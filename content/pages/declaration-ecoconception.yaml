@@ -1,0 +1,12 @@
+titre: Écoconception
+statut: publie
+seo:
+  titre: "Déclaration d'écoconception"
+  description: "Déclaration d'écoconception du site selon le RGESN 2024 : score d'avancement, mesures des pages, plan d'action et détail des 78 critères."
+  noindex: true
+sections:
+  - block: hero
+    variant: minimal
+    titre: Déclaration d'écoconception
+  - block: legal
+    variant: ecoconception

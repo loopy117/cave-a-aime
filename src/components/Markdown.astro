@@ -1,0 +1,22 @@
+---
+/**
+ * Rendu d'un champ Markdown (blocs texte, texte-image, faq, corps des collections).
+ * Le maillage contextuel (lib/maillage.ts) ajoute au plus 3 liens par page vers
+ * les autres pages dont une « ancre » apparaît dans le texte. `lier={false}` l'évite.
+ */
+import { markdownVersHtml } from '../lib/markdown';
+import { indexSite } from '../lib/site';
+import { construireCibles, etatPage, lierTexte, type Cible } from '../lib/maillage';
+import { marquerLiensExternes } from '../lib/liens';
+interface Props { source: string; class?: string; lier?: boolean }
+const { source, class: classe, lier = true } = Astro.props;
+// HTML brut affiché comme du texte, liens javascript:/data: neutralisés (lib/markdown.ts)
+let html = await markdownVersHtml(source);
+if (lier) {
+  const g = globalThis as any;
+  const cibles: Cible[] = g.__xmCibles ?? (g.__xmCibles = construireCibles(await indexSite()));
+  html = lierTexte(html, cibles, etatPage(Astro.url.pathname));
+}
+html = marquerLiensExternes(html, Astro.site);
+---
+<div class:list={['prose', classe]} set:html={html} />

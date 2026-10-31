@@ -1,0 +1,7 @@
+---
+/** Parcourt la liste des sections d'une page et appelle le bon bloc. */
+import { composantsBlocs } from '../blocks';
+interface Props { sections: any[]; courant?: { id: string; data: any } }
+const { sections, courant } = Astro.props;
+---
+{sections.map((s) => { const Bloc = (composantsBlocs as any)[s.block]; return <Bloc {...s} courant={courant} />; })}

@@ -1,0 +1,47 @@
+---
+/** Exemple du suivi des demandes clients, en colonnes. */
+const colonnes = [
+  { titre: 'Nouvelles', cartes: [
+    { t: 'Isolation des combles', s: 'Maison de village · 3 photos', e: [['Dans votre zone', 'vert'], ['Urgent', 'orange']] },
+    { t: 'Pompe à chaleur', s: 'Délai : cet hiver', e: [['À compléter', 'gris']] },
+  ] },
+  { titre: 'À rappeler', cartes: [{ t: 'Rénovation salle de bains', s: 'Rappel prévu demain matin', e: [] }] },
+  { titre: 'Devis envoyé', cartes: [{ t: "Isolation par l'extérieur", s: 'Devis envoyé mardi', e: [] }] },
+  { titre: 'Accepté', cartes: [{ t: 'Fenêtres double vitrage', s: 'Chantier terminé · avis demandé', e: [] }] },
+];
+---
+<figure class="td" aria-label="Exemple de suivi des demandes clients">
+  <div class="td__haut"><span>Votre espace · Demandes</span><span class="td__ex">Exemple</span></div>
+  <div class="td__cols">
+    {colonnes.map((c) => (
+      <div class="td__col">
+        <span class="td__titre">{c.titre}</span>
+        {c.cartes.map((k) => (
+          <div class="td__carte">
+            <span class="td__t">{k.t}</span>
+            <span class="td__s">{k.s}</span>
+            {k.e.length > 0 && <div class="td__etiq">{k.e.map(([l, cl]) => <span class={`td__e td__e--${cl}`}>{l}</span>)}</div>}
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
+</figure>
+<style>
+  .td { margin: 0; display: flex; flex-direction: column; gap: 18px; padding: clamp(18px, 2vw, 28px); border-radius: 26px; background: #fff; border: 1px solid var(--c-border); color: var(--c-ink); }
+  .td__haut { display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; }
+  .td__ex { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-muted); }
+  .td__cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .td__col { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; background: var(--c-surface-alt); }
+  .td__titre { font-size: 14px; font-weight: 600; color: var(--c-text-body); }
+  .td__carte { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: #fff; border: 1px solid var(--c-border); }
+  .td__t { font-size: 16px; font-weight: 600; }
+  .td__s { font-size: 14px; color: var(--c-text-muted); }
+  .td__etiq { display: flex; gap: 6px; flex-wrap: wrap; }
+  .td__e { padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; }
+  .td__e--vert { background: #DDEFE5; color: #115C36; }
+  .td__e--orange { background: #FFE3D3; color: #8A3300; }
+  .td__e--gris { background: var(--c-surface-alt); color: var(--c-text-body); }
+  @media (max-width: 900px) { .td__cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .td__cols { grid-template-columns: 1fr; } }
+</style>

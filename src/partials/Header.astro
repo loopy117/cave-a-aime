@@ -1,0 +1,190 @@
+---
+import Logo from './Logo.astro';
+import MegaMenu from './MegaMenu.astro';
+import site from '../../data/site.json';
+import { navigation } from '../lib/site';
+interface Props { courant: string; landing?: boolean }
+const { courant, landing = false } = Astro.props;
+const nav = await navigation();
+const tel = 'tel:+33' + site.telephone.replace(/\s/g, '').replace(/^0/, '');
+const actif = (href: string) => courant === href || (href !== '/' && courant.startsWith(href + '/'));
+const mega = (l: (typeof nav.menu)[number]) => l.disposition === 'mega' && (l.enfants ?? []).some((x) => x.visible);
+---
+{site.urgence?.actif && (
+  <div class="topbar">
+    <a class="topbar__urgence" href={tel}><span class="topbar__point" aria-hidden="true"></span>{site.urgence.texte} — {site.telephone}</a>
+    <span class="topbar__zones">{site.zone_resume}</span>
+  </div>
+)}
+<header class="header">
+  <a class="marque" href="/" aria-label={`${site.nom} — accueil`}>
+    <Logo />
+    <span class="marque__textes"><span class="visually-hidden">{site.nom}</span><span class="marque__baseline">{site.baseline}</span></span>
+  </a>
+  {!landing && (
+    <details class="nav-mobile">
+      <summary class="nav-mobile__bouton"><span class="visually-hidden">Menu</span><span class="burger" aria-hidden="true"></span></summary>
+    </details>
+  )}
+  <nav class:list={['nav', landing && 'nav--landing']} aria-label="Navigation principale">
+    {!landing && (
+      <ul class="nav__liste">
+        {nav.menu.map((l, i) => (
+          <li class:list={['nav__item', mega(l) && 'nav__item--mega']}>
+            <a class="nav__lien" href={l.href} aria-current={actif(l.href) ? 'page' : undefined}>{l.label}</a>
+            {mega(l) && <MegaMenu entree={l} actif={actif} bascule={1080} id={`mega-${i}`} />}
+            {!mega(l) && l.enfants && l.enfants.filter((x) => x.visible).length > 0 && (
+              <ul class="nav__sous">{l.enfants.filter((x) => x.visible).map((x) => {
+                const petits = (x.enfants ?? []).filter((y) => y.visible);
+                return (
+                  <li class:list={[petits.length > 0 && 'nav__groupe']}>
+                    <a href={x.href} aria-current={actif(x.href) ? 'page' : undefined}>{x.label}</a>
+                    {petits.length > 0 && <ul class="nav__sous2">{petits.map((y) => <li><a href={y.href} aria-current={actif(y.href) ? 'page' : undefined}>{y.label}</a></li>)}</ul>}
+                  </li>
+                );
+              })}</ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    )}
+    <div class="langues" data-langues hidden></div>
+    <a class="btn btn--primaire btn--sm nav__cta" href={nav.bouton.href}>{nav.bouton.label}</a>
+  </nav>
+</header>
+
+<style>
+  /* Sélecteur de langue (site multilingue), rempli après le build par scripts/langues.mjs */
+  :global(.langues__liste) { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+  :global(.langues__liste a) { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0 6px; border-radius: 8px; font-weight: 600; font-size: 14px; letter-spacing: .02em; color: inherit; text-decoration: none; }
+  :global(.langues__liste a:hover) { text-decoration: underline; text-underline-offset: 4px; }
+  :global(.langues__liste a[aria-current]) { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+  :global(.langues__liste abbr) { text-decoration: none; }
+  .topbar { background: var(--c-ink); padding: 9px var(--gutter); display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; justify-content: center; }
+  .topbar__urgence { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 500; color: #fff; }
+  .topbar__urgence:hover { color: #fff; text-decoration: underline; }
+  .topbar__point { width: 7px; height: 7px; border-radius: 50%; background: var(--c-accent); }
+  .topbar__zones { font-size: var(--fs-sm); color: var(--c-on-dark-muted); }
+
+  .header { position: sticky; top: 0; z-index: 20; background: var(--c-header-bg, rgb(255 255 255 / 0.94)); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-header-line, var(--c-border-soft)); padding: 14px var(--gutter); display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+  .marque { display: flex; align-items: center; gap: 12px; color: var(--c-header-logo, var(--c-ink)); }
+  .marque__textes { display: flex; flex-direction: column; gap: 1px; }
+  .marque__nom { font-size: 21px; font-weight: 700; letter-spacing: 0.01em; color: var(--c-ink); line-height: 1; }
+  /* baseline : réglable par le thème du site (sans réglage : hauteur de ligne héritée, pas de largeur maximale) */
+  .marque__baseline { font-size: var(--header-baseline-size, 10.5px); line-height: var(--header-baseline-lh); letter-spacing: var(--header-baseline-tracking, 0.04em); max-width: var(--header-baseline-max); color: var(--c-header-muted, var(--c-text-muted)); }
+  .nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .nav__liste { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .nav__item { position: relative; }
+  .nav__lien { display: block; font-family: var(--header-nav-font, inherit); font-size: var(--header-nav-size, var(--fs-base)); font-weight: var(--header-nav-weight, 500); letter-spacing: var(--header-nav-tracking, normal); text-transform: var(--header-nav-transform, none); color: var(--c-header-ink, oklch(0.3 0.02 160)); padding: 9px 12px; border-radius: var(--radius-sm); }
+  .nav__lien:hover, .nav__lien[aria-current] { background: var(--c-header-hover-bg, var(--c-surface-alt)); color: var(--c-header-hover-ink, var(--c-ink)); }
+  .nav__sous { display: none; position: absolute; top: 100%; left: 0; min-width: 220px; list-style: none; margin: 0; padding: 8px; background: #fff; border: 1px solid var(--c-border); border-radius: 12px; box-shadow: 0 10px 30px oklch(0.24 0.02 160 / 0.1); }
+  .nav__item:hover .nav__sous, .nav__item:focus-within .nav__sous { display: block; }
+  .nav__sous a { display: block; padding: 8px 10px; border-radius: 8px; color: var(--c-text); font-size: var(--fs-base); white-space: nowrap; }
+  .nav__sous a:hover { background: var(--c-surface-alt); }
+  /* Sous-sous-menu (ex. Villes › Aix-en-Provence › Création de site) : s'ouvre à droite de son entrée */
+  .nav__groupe { position: relative; }
+  .nav__groupe > a { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+  .nav__groupe > a::after { content: '›'; color: var(--c-text-muted); font-size: 1.15em; line-height: 1; }
+  .nav__sous2 { display: none; position: absolute; top: -9px; left: 100%; min-width: 240px; list-style: none; margin: 0 0 0 6px; padding: 8px; background: #fff; border: 1px solid var(--c-border); border-radius: 12px; box-shadow: 0 10px 30px oklch(0.24 0.02 160 / 0.1); }
+  .nav__sous2::before { content: ''; position: absolute; inset: 0 100% 0 -8px; }
+  .nav__groupe:hover > .nav__sous2, .nav__groupe:focus-within > .nav__sous2 { display: block; }
+  .nav__sous2 a { display: block; padding: 8px 10px; border-radius: 8px; color: var(--c-text); font-size: var(--fs-sm); }
+  .nav__sous2 a:hover { background: var(--c-surface-alt); }
+  .nav__cta { margin-left: 6px; }
+  /* Méga-menu (MegaMenu.astro) : le panneau se place sous l'en-tête entier, pas sous l'entrée */
+  @media (min-width: 1081px) {
+    .nav__item--mega { position: static; }
+    /* Échap ferme le sous-menu ouvert au survol ou au clavier (WCAG 1.4.13), jusqu'à ce qu'on le quitte */
+    .nav__item.nav__item--ferme .nav__sous { display: none; }
+  }
+
+  .nav-mobile { display: none; }
+  @media (max-width: 1080px) {
+    .nav-mobile { display: block; margin-left: auto; }
+    .nav-mobile__bouton { list-style: none; cursor: pointer; width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--c-header-line, var(--c-border)); display: grid; place-items: center; }
+    .nav-mobile__bouton::-webkit-details-marker { display: none; }
+    .burger, .burger::before, .burger::after { display: block; width: 18px; height: 2px; background: var(--c-header-ink, var(--c-ink)); border-radius: 2px; position: relative; }
+    .burger::before, .burger::after { content: ''; position: absolute; left: 0; }
+    .burger::before { top: -6px; } .burger::after { top: 6px; }
+    .nav:not(.nav--landing) { display: none; width: 100%; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+    .nav-mobile[open] + .nav { display: flex; }
+    /* L'en-tête est collé en haut de l'écran : un menu ouvert plus haut que l'écran défile lui-même, sinon sa fin
+       resterait hors de portée (la page derrière défilerait, pas le menu). 100vh d'abord pour les anciens navigateurs. */
+    .nav-mobile[open] + .nav:not(.nav--landing) { max-height: calc(100vh - var(--header-mobile-h, 76px)); max-height: calc(100dvh - var(--header-mobile-h, 76px)); overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; }
+    .nav__liste { flex-direction: column; }
+    .nav__sous { display: block; position: static; box-shadow: none; border: 0; padding: 0 0 0 12px; }
+    /* Téléphone : pas de sous-sous-menu (la liste deviendrait trop longue) ; la page de l'entrée y mène */
+    .nav__sous2, .nav__groupe > a::after { display: none !important; }
+    .nav__cta { margin: 8px 0 0; }
+  }
+  /* ---- Variante « centre » (site.json › apparence.entete) : logo centré, menu dessous, sur grand écran ---- */
+  @media (min-width: 1081px) {
+    :global(body.ap-entete-centre) .header { flex-direction: column; justify-content: center; gap: 10px; padding-block: 18px 10px; }
+    :global(body.ap-entete-centre) .marque { flex-direction: column; gap: 6px; }
+    :global(body.ap-entete-centre) .marque__textes { align-items: center; text-align: center; }
+    :global(body.ap-entete-centre) .nav { justify-content: center; }
+  }
+  /* Téléphone et tablette : logo et menu sur une ligne, sans la baseline (elle passerait sur deux lignes) */
+  @media (max-width: 1080px) {
+    :global(body.ap-entete-centre) .marque__baseline { display: none; }
+  }
+
+  /* ---- En-tête posé sur la photo (apparence.entete_sur_photo) quand la page commence par un héros photo ----
+     En haut de page : transparent, posé sur la photo, il défile avec elle (jamais par-dessus le texte du héros).
+     Une fois sorti de l'écran (JavaScript, classe header--suit) : il revient fixé en haut, plein et compact. */
+  :global(body.ap-entete-sur-photo:not(:has(.topbar)):has(#contenu > .hero--affiche:first-child, #contenu > .hero--plein-ecran:first-child)) .header {
+    position: absolute; left: 0; right: 0;
+    background: linear-gradient(180deg, rgb(0 0 0 / 0.5), rgb(0 0 0 / 0)) border-box;
+    backdrop-filter: none; border-bottom-color: transparent;
+    --c-header-ink: #fff; --c-header-logo: #fff; --c-header-muted: rgb(255 255 255 / 0.82);
+    --c-header-hover-bg: rgb(255 255 255 / 0.14); --c-header-hover-ink: #fff; --c-header-line: rgb(255 255 255 / 0.45);
+    transition: background-color .25s ease, box-shadow .25s ease;
+  }
+  :global(body.ap-entete-sur-photo:not(:has(.topbar)):has(#contenu > .hero--affiche:first-child, #contenu > .hero--plein-ecran:first-child)) .header.header--suit { position: fixed; box-shadow: 0 6px 24px -18px rgb(0 0 0 / 0.5); }
+  @media (prefers-reduced-motion: no-preference) {
+    :global(body.ap-entete-sur-photo:not(:has(.topbar)):has(#contenu > .hero--affiche:first-child, #contenu > .hero--plein-ecran:first-child)) .header.header--suit { animation: entete-descend .28s ease-out; }
+  }
+  @keyframes entete-descend { from { transform: translateY(-100%); } }
+  /* En-tête centré, une fois fixé : une seule ligne (logo à gauche, menu à droite), pour ne pas manger l'écran */
+  @media (min-width: 1081px) {
+    :global(body.ap-entete-centre) .header.header--suit { flex-direction: row; justify-content: space-between; padding-block: 10px; }
+    :global(body.ap-entete-centre) .header.header--suit .marque__baseline { display: none; }
+  }
+  :global(body.ap-entete-sur-photo:not(:has(.topbar)):has(#contenu > .hero--affiche:first-child, #contenu > .hero--plein-ecran:first-child)) .header:is(.header--suit, :has(.nav-mobile[open])) {
+    /* « inherit » : les couleurs d'en-tête du site (tokens.css), masquées tant que l'en-tête est sur la photo */
+    background: var(--c-header-bg, rgb(255 255 255 / 0.94)); backdrop-filter: blur(10px);
+    --c-header-ink: inherit; --c-header-logo: inherit; --c-header-muted: inherit;
+    --c-header-hover-bg: inherit; --c-header-hover-ink: inherit; --c-header-line: inherit;
+    border-bottom-color: var(--c-header-line, var(--c-border-soft));
+  }
+</style>
+<script>
+  // Échap : ferme le sous-menu ou le méga-menu ouvert (survol ou clavier) et rend le focus à son entrée
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    const actif = document.activeElement instanceof HTMLElement ? document.activeElement.closest<HTMLElement>('.nav__item') : null;
+    const item = actif ?? document.querySelector<HTMLElement>('.nav__item:hover');
+    if (!item || !item.querySelector('.nav__sous, .mega')) return;
+    item.classList.add('nav__item--ferme');
+    if (actif) item.querySelector<HTMLElement>('.nav__lien')?.focus();
+  });
+  document.querySelectorAll<HTMLElement>('.nav__item').forEach((item) => {
+    item.addEventListener('mouseleave', () => item.classList.remove('nav__item--ferme'));
+    item.addEventListener('focusout', (ev) => { if (!item.contains(ev.relatedTarget as Node | null)) item.classList.remove('nav__item--ferme'); });
+  });
+  // En-tête posé sur la photo : défile avec la page tant qu'il est visible, puis revient fixé et plein
+  const entete = document.querySelector<HTMLElement>('.header');
+  if (entete && getComputedStyle(entete).position === 'absolute') {
+    let hauteur = entete.offsetHeight;
+    let attente = false;
+    const maj = () => {
+      attente = false;
+      const suit = entete.classList.contains('header--suit');
+      // Hystérésis : il revient sur la photo seulement tout en haut, pour ne pas clignoter à la limite
+      if (!suit && window.scrollY > hauteur) entete.classList.add('header--suit');
+      else if (suit && window.scrollY <= 4) { entete.classList.remove('header--suit'); hauteur = entete.offsetHeight; }
+    };
+    addEventListener('scroll', () => { if (!attente) { attente = true; requestAnimationFrame(maj); } }, { passive: true });
+    maj();
+  }
+</script>

@@ -1,0 +1,45 @@
+---
+/** Rencontre en ligne : date, équipe, intitulé, lieu, score ou heure, issue (couleur + texte, jamais la couleur seule). */
+import { getCollection } from 'astro:content';
+import { urlElement } from '../lib/urls';
+import { jourRencontre, heureFr, intitule, score, issue, libelleIssue, lieu, typeRencontre, estAVenir } from '../lib/rencontres';
+const { element } = Astro.props;
+const d = element.data;
+const equipes = await getCollection('equipes');
+const eq = equipes.find((e) => e.id === d.equipe);
+const avenir = estAVenir(element);
+const res = issue(element);
+---
+<article class="rl" data-issue={res ?? undefined}>
+  <p class="rl__date"><time datetime={new Date(d.date).toISOString().slice(0, 10)}>{jourRencontre(d.date)}</time>{avenir && d.heure && <span> · {heureFr(d.heure)}</span>}</p>
+  <div class="rl__corps">
+    <p class="rl__equipe">{eq?.data.nom_court ?? d.equipe} · {typeRencontre(d.type)}{d.competition && ` · ${d.competition}`}</p>
+    <h3 class="rl__titre"><a href={urlElement('rencontres', element.id)}>{intitule(element)}</a></h3>
+    <p class="rl__lieu">{d.domicile ? 'À domicile' : 'À l\'extérieur'}{lieu(element) && ` · ${lieu(element)}`}</p>
+  </div>
+  <p class="rl__res">
+    {d.annulee ? <span class="rl__etat">Annulée</span>
+      : res ? <><span class="rl__score">{score(element)}</span><span class="rl__issue">{libelleIssue[res]}</span></>
+      : avenir ? <span class="rl__etat">À venir</span>
+      : <span class="rl__etat">{d.type === 'match' || d.type === 'amical' ? 'Score à venir' : 'Joué'}</span>}
+  </p>
+</article>
+<style>
+  .rl { position: relative; display: grid; grid-template-columns: 9.5em 1fr auto; gap: 6px 18px; align-items: center; padding: 14px 0; }
+  .rl__date { margin: 0; font-weight: 700; color: var(--c-text-strong); font-size: var(--fs-base, 15px); }
+  .rl__date::first-letter { text-transform: uppercase; }
+  .rl__date span { font-weight: 500; color: var(--c-text-muted); }
+  .rl__corps { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .rl__equipe { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--c-eyebrow); }
+  .rl__titre { margin: 0; font-family: var(--font-title); font-size: 22px; line-height: 1.1; color: var(--c-text-strong); }
+  .rl__titre a { color: inherit; text-decoration: none; }
+  .rl__titre a::after { content: ''; position: absolute; inset: 0; }
+  .rl:has(a:focus-visible) { outline: 3px solid var(--c-link); outline-offset: 2px; }
+  .rl__titre a:focus-visible { outline: none; }
+  .rl__lieu { margin: 0; font-size: 14px; color: var(--c-text-muted); }
+  .rl__res { margin: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+  .rl__score { font-family: var(--font-title); font-size: 28px; font-weight: 700; color: var(--c-text-strong); white-space: nowrap; }
+  .rl__issue, .rl__etat { font-size: 13px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--c-surface-alt); color: var(--c-text-body); }
+  .rl[data-issue="victoire"] .rl__issue { background: var(--c-accent); color: var(--c-accent-ink); }
+  @media (max-width: 640px) { .rl { grid-template-columns: 1fr auto; } .rl__date { grid-column: 1 / -1; } }
+</style>

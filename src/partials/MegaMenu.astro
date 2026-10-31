@@ -1,0 +1,113 @@
+---
+/**
+ * Panneau d'un méga-menu (data/menu.json : `disposition: "mega"` sur une entrée du menu principal).
+ * Chaque enfant qui a des sous-liens devient une colonne ; son intitulé est un lien ou un simple texte.
+ * Les enfants sans sous-liens sont réunis dans une première colonne. Sous chaque lien : `description` facultative.
+ * Intitulé de colonne : couleur des surtitres du site (--c-mega-titre pour la changer), filet dessous, `icone` facultative.
+ *
+ * Grand écran : panneau sous l'en-tête, ouvert au survol et au clavier (focus), fermé par Échap (Header).
+ * Téléphone (sous `bascule` px, la largeur où l'en-tête passe au menu burger) : colonnes à la suite, sans descriptions ;
+ * une colonne dont l'intitulé est un lien se réduit à ce lien (comme le sous-sous-menu), pour garder une liste courte.
+ * Utilisé par l'en-tête de la base et par celui des variantes (le parent porte la classe `nav__item--mega`).
+ */
+import type { LienResolu } from '../lib/index-site';
+import Icone from '../components/Icone.astro';
+interface Props { entree: LienResolu; actif: (href: string) => boolean; bascule: 1080 | 1100; id: string }
+const { entree, actif, bascule, id } = Astro.props;
+const visibles = (l?: LienResolu[]) => (l ?? []).filter((x) => x.visible);
+const enfants = visibles(entree.enfants);
+const seuls = enfants.filter((x) => visibles(x.enfants).length === 0 && !x.groupe);
+const colonnes = [
+  ...(seuls.length ? [{ titre: undefined as LienResolu | undefined, liens: seuls }] : []),
+  ...enfants.filter((x) => visibles(x.enfants).length > 0).map((x) => ({ titre: x, liens: visibles(x.enfants) })),
+];
+const avecDescriptions = enfants.some((x) => x.description || visibles(x.enfants).some((y) => y.description));
+---
+<div class:list={['mega', `mega--b${bascule}`, avecDescriptions && 'mega--decrit']} style={`--mega-colonnes: ${colonnes.length}`}>
+  <div class="mega__grille">
+    {colonnes.map((c, k) => (
+      <div class:list={['mega__colonne', c.titre && !c.titre.groupe && 'mega__colonne--reduite']}>
+        {c.titre && (c.titre.groupe
+          ? <p class="mega__titre" id={`${id}-${k}`}>{c.titre.icone && <span class="mega__icone"><Icone nom={c.titre.icone} taille={16} /></span>}<span>{c.titre.label}</span></p>
+          : <a class="mega__titre mega__titre--lien" id={`${id}-${k}`} href={c.titre.href} aria-current={actif(c.titre.href) ? 'page' : undefined}>{c.titre.icone && <span class="mega__icone"><Icone nom={c.titre.icone} taille={16} /></span>}<span>{c.titre.label}</span></a>)}
+        {c.titre?.description && <p class="mega__chapeau">{c.titre.description}</p>}
+        <ul class="mega__liens" aria-labelledby={c.titre ? `${id}-${k}` : undefined}>
+          {c.liens.map((l) => (
+            <li>
+              <a href={l.href} aria-current={actif(l.href) ? 'page' : undefined}>
+                <span class="mega__libelle">{l.label}</span>
+                {l.description && <span class="mega__desc">{l.description}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  /* ---- Grand écran : panneau sous l'en-tête (le parent .nav__item--mega n'est pas positionné : l'en-tête l'est) ---- */
+  .mega { display: none; position: absolute; top: 100%; left: 0; right: 0; margin-inline: auto; z-index: 30;
+    width: min(calc(100% - 2 * var(--gutter, 24px)), calc(var(--mega-colonnes) * var(--mega-colonne, 250px) + 48px));
+    background: var(--c-mega-bg, #fff); border: 1px solid var(--c-border); border-radius: var(--mega-radius, 14px);
+    box-shadow: 0 18px 44px oklch(0.24 0.02 160 / 0.14); padding: 22px 24px 18px; text-align: left; }
+  .mega--decrit { --mega-colonne: 280px; }
+  /* Pont invisible entre le lien du menu et le panneau : le survol ne se perd pas dans la marge de l'en-tête */
+  .mega::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 18px; }
+  :global(.nav__item--mega:hover) > .mega, :global(.nav__item--mega:focus-within) > .mega { display: block; }
+  :global(.nav__item--mega.nav__item--ferme) > .mega { display: none; }
+  .mega__grille { display: grid; grid-template-columns: repeat(var(--mega-colonnes), minmax(0, 1fr)); gap: 8px 22px; }
+  .mega__colonne { min-width: 0; }
+  /* Filets alignés d'une colonne à l'autre même si un intitulé passe sur deux lignes (sous-grille : intitulé, chapeau, liens) */
+  @supports (grid-template-rows: subgrid) {
+    .mega__grille { grid-template-rows: auto auto 1fr; row-gap: 0; }
+    .mega__colonne { display: grid; grid-row: span 3; grid-template-rows: subgrid; }
+    .mega__titre { grid-row: 1; align-self: stretch; align-items: flex-end; }
+    .mega__chapeau { grid-row: 2; }
+    .mega__liens { grid-row: 3; align-self: start; }
+  }
+  /* Intitulé de colonne : couleur des surtitres du site, icône dans une pastille teintée, filet sous l'intitulé */
+  .mega__titre { --mega-titre: var(--c-mega-titre, var(--c-eyebrow, var(--c-ink)));
+    display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 0 10px 10px;
+    border-bottom: 1px solid var(--c-border); font-size: var(--fs-sm, 13.5px); font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; line-height: 1.3; color: var(--mega-titre); text-decoration: none; }
+  .mega__icone { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
+    color: var(--mega-titre); background: var(--c-surface-alt); background: color-mix(in oklch, var(--mega-titre) 12%, transparent); }
+  .mega__titre--lien { border-radius: 8px 8px 0 0; }
+  .mega__titre--lien:hover, .mega__titre--lien[aria-current] { color: var(--mega-titre); text-decoration: underline; text-underline-offset: 4px; }
+  .mega__chapeau { margin: -2px 0 8px; padding: 0 10px; font-size: var(--fs-sm); color: var(--c-text-muted); line-height: 1.4; }
+  .mega__liens { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .mega__liens a { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; color: var(--c-text); text-decoration: none; }
+  .mega__liens a:hover { background: var(--c-surface-alt); color: var(--c-ink); }
+  .mega__liens a[aria-current] { background: var(--c-surface-alt); }
+  .mega__liens a[aria-current] .mega__libelle { text-decoration: underline; text-underline-offset: 3px; }
+  .mega__libelle { font-size: var(--fs-base); font-weight: 600; line-height: 1.3; }
+  .mega__desc { font-size: var(--fs-sm); color: var(--c-text-muted); line-height: 1.4; }
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.nav__item--mega:hover) > .mega, :global(.nav__item--mega:focus-within) > .mega { animation: mega-ouvre .16s ease-out; }
+  }
+  @keyframes mega-ouvre { from { opacity: 0; transform: translateY(-4px); } }
+
+  /* ---- Téléphone et tablette : à la suite dans le menu burger (même seuil que l'en-tête qui l'utilise) ---- */
+  @media (max-width: 1080px) {
+    .mega--b1080 { display: block; position: static; width: auto; margin: 0; padding: 0 0 4px 12px; border: 0; box-shadow: none; background: none; animation: none !important; }
+    .mega--b1080::before, .mega--b1080 .mega__desc, .mega--b1080 .mega__chapeau, .mega--b1080 .mega__colonne--reduite .mega__liens { display: none; }
+    .mega--b1080 .mega__grille, .mega--b1080 .mega__colonne { display: block; }
+    .mega--b1080 .mega__titre { margin: 10px 0 2px; padding: 0 0 6px; gap: 8px; }
+    .mega--b1080 .mega__icone { width: 24px; height: 24px; border-radius: 6px; }
+    .mega--b1080 .mega__titre--lien { text-transform: none; letter-spacing: 0; font-size: var(--fs-base); font-weight: 500; padding: 8px 10px; color: var(--c-text); border-bottom: 0; margin: 0; }
+    .mega--b1080 .mega__liens a { padding: 8px 10px; }
+    .mega--b1080 .mega__libelle { font-weight: 500; }
+  }
+  @media (max-width: 1100px) {
+    .mega--b1100 { display: block; position: static; width: auto; margin: 0; padding: 4px 0 4px 18px; border: 0; box-shadow: none; background: none; animation: none !important; }
+    .mega--b1100::before, .mega--b1100 .mega__desc, .mega--b1100 .mega__chapeau, .mega--b1100 .mega__colonne--reduite .mega__liens { display: none; }
+    .mega--b1100 .mega__grille, .mega--b1100 .mega__colonne { display: block; }
+    .mega--b1100 .mega__titre { margin: 10px 0 2px; padding: 0 0 6px; gap: 8px; }
+    .mega--b1100 .mega__icone { width: 24px; height: 24px; border-radius: 6px; }
+    .mega--b1100 .mega__titre--lien { text-transform: none; letter-spacing: 0; font-size: var(--fs-base); font-weight: 500; padding: 9px 12px; color: var(--c-text); border-bottom: 0; margin: 0; }
+    .mega--b1100 .mega__liens a { padding: 9px 12px; }
+    .mega--b1100 .mega__libelle { font-weight: 500; }
+  }
+</style>

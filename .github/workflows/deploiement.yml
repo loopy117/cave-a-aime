@@ -1,0 +1,415 @@
+# Déploiement du site par rsync (SSH) vers le serveur xmediacreation (VPS).
+#  - push sur main          → production (dossier DOSSIER_PRODUCTION)
+#  - push sur une branche ia/… (demande de l'espace client) → aperçu si DOSSIER_APERCU existe (le client relit
+#    et valide sa demande sur l'aperçu), sinon recette (DOSSIER_RECETTE), si la variable existe
+#  - push sur une branche cms/… (modification en attente dans l'éditeur) → aperçu (DOSSIER_APERCU, URL_APERCU),
+#    réservé aux comptes de l'espace client, avec correction des textes sur la page (scripts/apercu.ts)
+#  - « Voir l'aperçu » dans l'espace client (repository_dispatch « apercu ») : reconstruit l'aperçu pour une branche
+#  - lancement manuel possible depuis l'onglet Actions ; reconstruction chaque nuit (prochaine rencontre, résultats)
+# Réglages : Settings → Secrets and variables → Actions (voir DEPLOIEMENT.md)
+name: Déploiement
+
+on:
+  push:
+    branches: [main, 'ia/**', 'cms/**']
+  workflow_dispatch:
+  # Chaque matin : « prochaine rencontre » et calendrier à jour, rencontres passées rangées dans les résultats
+  schedule:
+    - cron: '23 4 * * *'
+  repository_dispatch:
+    types: [apercu]
+
+concurrency:
+  # Un seul aperçu par site : la dernière modification enregistrée l'emporte
+  group: ${{ (startsWith(github.event.client_payload.branche || github.ref_name, 'cms/') || github.event_name == 'repository_dispatch' || (startsWith(github.ref_name, 'ia/') && vars.DOSSIER_APERCU != '')) && 'apercu' || format('deploiement-{0}', github.ref) }}
+  cancel-in-progress: true
+
+jobs:
+  construire-et-deployer:
+    # Branche de l'éditeur ou aperçu demandé, sans aperçu configuré : rien à construire
+    # Ces workflows servent aux sites ; dans le dépôt du socle lui-même (sans contenus) ils ne tournent pas
+    if: ${{ github.repository != 'loopy117/socle-sites' && ((github.event_name != 'repository_dispatch' && !startsWith(github.ref, 'refs/heads/cms/')) || vars.DOSSIER_APERCU != '') }}
+    runs-on: ubuntu-latest
+    # Lecture seule : ce job détient la clé SSH de production. Les traductions sont enregistrées par le job « traductions ».
+    permissions:
+      contents: read
+    outputs:
+      traductions: ${{ steps.traductions.outputs.nouvelles }}
+    env:
+      # Mémoire de Node pour la construction : environ 2 Go par défaut, trop peu pour un gros site (plus de 1 000 pages).
+      # 6 Go sur une machine GitHub de 7 à 8 Go ; réglable par site avec la variable NODE_OPTIONS du dépôt.
+      NODE_OPTIONS: ${{ vars.NODE_OPTIONS || '--max-old-space-size=6144' }}
+      BRANCHE: ${{ github.event.client_payload.branche || github.ref_name }}
+      CIBLE: ${{ (github.event_name != 'repository_dispatch' && github.ref == 'refs/heads/main') && 'production' || ((startsWith(github.event.client_payload.branche || github.ref_name, 'cms/') || github.event_name == 'repository_dispatch' || (startsWith(github.ref_name, 'ia/') && vars.DOSSIER_APERCU != '')) && 'apercu' || 'recette') }}
+    steps:
+      - name: Début de la mesure (empreinte)
+        run: echo "DEBUT_MESURE=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Vérifier la branche demandée
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          [[ "$BRANCHE" =~ ^(ia|cms)/[A-Za-z0-9._/-]{1,200}$ ]] && [[ "$BRANCHE" != *..* ]] || { echo "::error::Branche refusée (format invalide)"; exit 1; }
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ env.BRANCHE }}
+          fetch-depth: ${{ env.CIBLE == 'apercu' && '0' || '1' }}
+
+      # Aperçu : code du site tel qu'il est sur main (composants, scripts à jour), avec seulement les contenus que
+      # la modification a changés (une branche de l'éditeur garde sinon le code du jour où elle a été créée)
+      - name: Aperçu — code de main, contenus de la modification
+        if: env.CIBLE == 'apercu'
+        run: |
+          git fetch -q origin main
+          SHA=$(git rev-parse HEAD)
+          echo "APERCU_SHA=$SHA" >> "$GITHUB_ENV"
+          BASE=$(git merge-base origin/main "$SHA")
+          git diff -z --name-only --diff-filter=AMR "$BASE" "$SHA" -- content media data > modifies.lst
+          git diff -z --name-only --diff-filter=D "$BASE" "$SHA" -- content media data > supprimes.lst
+          git -c advice.detachedHead=false checkout -q origin/main
+          [ -s modifies.lst ] && xargs -0 git checkout "$SHA" -- < modifies.lst
+          [ -s supprimes.lst ] && xargs -0 git rm -q --ignore-unmatch -- < supprimes.lst
+          echo "Contenus de la modification : $(tr '\0' '\n' < modifies.lst | wc -l) fichier(s) modifié(s), $(tr '\0' '\n' < supprimes.lst | wc -l) supprimé(s)"
+          rm -f modifies.lst supprimes.lst
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Choisir la destination
+        id: dest
+        run: |
+          if [ "$CIBLE" = "production" ]; then
+            echo "dossier=${{ vars.DOSSIER_PRODUCTION }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ vars.URL_PRODUCTION }}" >> "$GITHUB_OUTPUT"
+            echo "noindex=${{ vars.NOINDEX_PRODUCTION || '0' }}" >> "$GITHUB_OUTPUT"
+          elif [ "$CIBLE" = "apercu" ]; then
+            echo "dossier=${{ vars.DOSSIER_APERCU }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ vars.URL_APERCU }}" >> "$GITHUB_OUTPUT"
+            echo "noindex=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "dossier=${{ vars.DOSSIER_RECETTE }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ vars.URL_RECETTE }}" >> "$GITHUB_OUTPUT"
+            echo "noindex=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Nuit — reconstruction utile ?
+        # Reconstruction de chaque nuit : seulement si quelque chose a pu changer sans modification du dépôt (pages qui
+        # dépendent de la date, contenu programmé, avis Google, scores ou empreinte déposés par le serveur), et une fois
+        # par semaine par sécurité. Sinon, rien n'est construit ni envoyé : quelques secondes au lieu de plusieurs minutes.
+        if: github.event_name == 'schedule' && env.CIBLE == 'production' && steps.dest.outputs.dossier != ''
+        env:
+          URL: ${{ steps.dest.outputs.url }}
+          VARIABLES: ${{ format('{0}|{1}|{2}', vars.AVIS_GOOGLE, vars.SCORES_SITES, vars.EMPREINTE) }}
+        run: |
+          VARH=$(printf '%s' "$VARIABLES" | sha256sum | cut -c1-16)
+          MODELE=$(jq -r '.modele // "entreprise"' data/site.json 2>/dev/null || echo entreprise)
+          EN_LIGNE=$(curl -sSfL "${URL%/}/empreinte-build.json?v=$GITHUB_RUN_ID" 2>/dev/null || echo '{}')
+          RAISON=""
+          case "$MODELE" in club|collectivite) RAISON="modèle $MODELE (pages qui dépendent de la date)" ;; esac
+          [ -n "$RAISON" ] || ! grep -rqsE '^statut:[[:space:]]*["'"'"']?programme' content || RAISON="contenu programmé"
+          [ -n "$RAISON" ] || [ "$(date -u +%u)" != 1 ] || RAISON="reconstruction de la semaine"
+          [ -n "$RAISON" ] || [ "$(date -u +%m%d)" != 0101 ] || RAISON="nouvelle année"
+          [ -n "$RAISON" ] || [ "$(jq -r '.variables // ""' <<< "$EN_LIGNE" 2>/dev/null)" = "$VARH" ] || RAISON="avis, scores ou empreinte déposés par le serveur"
+          if [ -z "$RAISON" ]; then
+            echo "SAUTER=1" >> "$GITHUB_ENV"
+            echo "### Nuit : rien à reconstruire (site en ligne à jour)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Reconstruction de nuit : $RAISON"
+          fi
+
+      - name: Arrêter si la recette n'est pas configurée
+        if: env.CIBLE == 'recette' && steps.dest.outputs.dossier == ''
+        run: echo "::notice::Pas de DOSSIER_RECETTE défini — build seulement, aucun envoi."
+
+      - if: env.SAUTER != '1'
+        run: npm ci
+
+      # Espace client, formulaire et connexion de l'éditeur : code commun du serveur
+      # xmediacreation (/opt/xmedia-commun, dépôt xmedia-serveur), plus rien à installer ici.
+
+      # Images déjà optimisées (AVIF, WebP) gardées d'un déploiement à l'autre : seules les nouvelles sont traitées
+      - name: Cache des images optimisées
+        if: env.SAUTER != '1'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .cache/astro
+          key: images-${{ hashFiles('media/**') }}
+          restore-keys: images-
+
+      # Avant le build : empreintes et dates de modification des pages en ligne. Le build garde la date d'une page
+      # inchangée (<lastmod> du sitemap, lu par Google) ; IndexNow compare après l'envoi pour prévenir Bing.
+      - name: Relever les pages en ligne (dates du sitemap, IndexNow)
+        if: env.SAUTER != '1' && (env.CIBLE == 'production' && steps.dest.outputs.dossier != '' && steps.dest.outputs.noindex != '1')
+        run: curl -sSfL "${{ steps.dest.outputs.url }}/indexnow-empreintes.json?v=$GITHUB_RUN_ID" -o indexnow-ancien.json || rm -f indexnow-ancien.json
+
+      - name: Valider et construire
+        if: env.SAUTER != '1'
+        run: npm run build
+        env:
+          # Site multilingue (data/site.json › langues) : en production, l'IA traduit ce qui a changé (scripts/langues.mjs)
+          TRADUIRE: ${{ env.CIBLE == 'production' && '1' || '' }}
+          ANTHROPIC_API_KEY: ${{ env.CIBLE == 'production' && secrets.ANTHROPIC_API_KEY || '' }}
+          SITE_URL: ${{ steps.dest.outputs.url }}
+          NOINDEX: ${{ steps.dest.outputs.noindex }}
+          INDEXNOW_CLE: ${{ vars.INDEXNOW_CLE }}
+          GOOGLE_MAPS_CLE: ${{ vars.GOOGLE_MAPS_CLE }}
+          # Note et avis de la fiche Google, déposés chaque matin par l'agent du serveur (src/lib/avisGoogle.ts)
+          AVIS_GOOGLE: ${{ vars.AVIS_GOOGLE }}
+          # Scores PageSpeed de tous les sites de l'agence, mesurés chaque semaine par l'agent (src/lib/scoresSites.ts)
+          SCORES_SITES: ${{ vars.SCORES_SITES }}
+          # Empreinte des sites clients sur 30 jours, calculée chaque nuit par l'agent (src/lib/empreinte.ts)
+          EMPREINTE: ${{ vars.EMPREINTE }}
+
+      - name: Empreinte du build (comparaison avec le site en ligne)
+        # empreinte-build.json : empreinte des fichiers construits (avant la note EcoIndex) et des variables déposées par
+        # le serveur. La nuit, un build identique au site en ligne s'arrête là : ni contrôle, ni note, ni envoi.
+        if: env.CIBLE == 'production' && steps.dest.outputs.dossier != '' && env.SAUTER != '1'
+        env:
+          URL: ${{ steps.dest.outputs.url }}
+          VARIABLES: ${{ format('{0}|{1}|{2}', vars.AVIS_GOOGLE, vars.SCORES_SITES, vars.EMPREINTE) }}
+        run: |
+          VARH=$(printf '%s' "$VARIABLES" | sha256sum | cut -c1-16)
+          # Sans les données internes datées de leur génération (éditeur, contexte de l'IA) : elles suivent les pages
+          CONTENU=$(cd dist && find . -type f ! -name empreinte-build.json ! -path './admin/*' ! -path './xmedia-ai/contexte/*' -print0 \
+            | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)
+          jq -cn --arg c "$CONTENU" --arg v "$VARH" '{contenu:$c, variables:$v}' > dist/empreinte-build.json
+          [ "$GITHUB_EVENT_NAME" = schedule ] || exit 0
+          EN_LIGNE=$(curl -sSfL "${URL%/}/empreinte-build.json?v=$GITHUB_RUN_ID" 2>/dev/null || echo '{}')
+          if [ "$(jq -r '.contenu // ""' <<< "$EN_LIGNE" 2>/dev/null)" = "$CONTENU" ]; then
+            echo "SAUTER=1" >> "$GITHUB_ENV"
+            echo "### Nuit : build identique au site en ligne, rien à envoyer" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Préparer les traductions (site multilingue)
+        # Production : les textes traduits par l'IA pendant le build (scripts/langues.mjs) sont gardés dans le dépôt,
+        # pour ne jamais les retraduire et pour que le client puisse les relire dans l'éditeur. main est protégée :
+        # le job « traductions » les dépose sur la branche « traductions », que l'agent du serveur fusionne dans l'heure.
+        id: traductions
+        if: env.SAUTER != '1' && (env.CIBLE == 'production')
+        run: |
+          [ -d content/traductions ] || exit 0
+          git add -A content/traductions
+          git diff --cached --quiet && { echo "Traductions à jour"; exit 0; }
+          mkdir -p _traductions
+          git diff --cached --binary -- content/traductions > _traductions/traductions.patch
+          echo "nouvelles=1" >> "$GITHUB_OUTPUT"
+          echo "Traductions nouvelles ou modifiées : $(git diff --cached --name-only | wc -l) fichier(s)"
+
+      - name: Transmettre les traductions
+        if: steps.traductions.outputs.nouvelles == '1'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: traductions
+          path: _traductions/
+          retention-days: 3
+
+      - name: Contrôle désactivé (variable CONTROLE=non)
+        if: env.CIBLE != 'apercu' && vars.CONTROLE == 'non'
+        run: |
+          echo "::warning title=Contrôle désactivé::mise en ligne sans contrôle (variable CONTROLE=non du dépôt) : la supprimer dès que l'urgence est passée"
+          echo "### ⚠ Contrôle désactivé" >> "$GITHUB_STEP_SUMMARY"
+          echo "Mise en ligne sans contrôle des pages : supprimer la variable CONTROLE du dépôt (Settings → Secrets and variables → Actions → Variables)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cache du navigateur de contrôle
+        if: env.SAUTER != '1' && (env.CIBLE != 'apercu' && vars.CONTROLE != 'non')
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.56.0
+
+      - name: Outils de contrôle (Playwright, axe, Lighthouse)
+        if: env.SAUTER != '1' && (env.CIBLE != 'apercu' && vars.CONTROLE != 'non')
+        run: |
+          npm i --no-save --no-audit --no-fund playwright@1.56.0 axe-core@4.10.3 lighthouse@12.8.2
+          npx playwright install --with-deps chromium
+
+      - name: Contrôler le site (pages, liens, accessibilité ; rapport Lighthouse)
+        # Bloquant : erreur JavaScript, ressource ou lien cassé, débordement sur téléphone, accessibilité grave.
+        # Lighthouse : rapport seulement. Variable du dépôt CONTROLE=non pour passer outre en cas d'urgence.
+        if: env.SAUTER != '1' && (env.CIBLE != 'apercu' && vars.CONTROLE != 'non')
+        run: node scripts/controle.mjs
+
+      - name: Note EcoIndex de chaque page (pied de page)
+        # Méthode EcoIndex : éléments, requêtes, poids transféré. Note affichée si A ou B (data/site.json › ecoindex).
+        # Jamais bloquant : en cas d'échec, la note reste simplement masquée.
+        if: env.SAUTER != '1' && (env.CIBLE != 'apercu' && vars.CONTROLE != 'non')
+        continue-on-error: true
+        run: node scripts/ecoindex.mjs
+
+      - name: Rapports du contrôle
+        if: always() && env.SAUTER != '1' && env.CIBLE != 'apercu' && vars.CONTROLE != 'non'
+        # Jamais bloquant : un rapport qui ne s'envoie pas (stockage d'Actions plein) n'empêche pas la mise en ligne
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: controle
+          path: controle/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Préparer l'aperçu (textes corrigeables sur la page)
+        if: env.CIBLE == 'apercu'
+        run: npx tsx scripts/apercu.ts
+        env:
+          APERCU: '1'
+          APERCU_BRANCHE: ${{ env.BRANCHE }}
+
+      - name: Préparer la clé SSH
+        if: env.SAUTER != '1' && (steps.dest.outputs.dossier != '')
+        env:
+          CLE: ${{ secrets.SSH_CLE_PRIVEE }}
+          HOTES: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          # tr -d '\r' : retire les fins de ligne Windows d'un copier-coller
+          ( umask 077; printf '%s\n' "$CLE" | tr -d '\r' > ~/.ssh/deploiement )
+          chmod 600 ~/.ssh/deploiement
+          printf '%s\n' "$HOTES" | tr -d '\r' > ~/.ssh/known_hosts
+          [ -n "${{ vars.SSH_HOTE }}" ] || { echo "::error::Variable SSH_HOTE manquante (Repository variables)"; exit 1; }
+          [ -n "${{ vars.SSH_UTILISATEUR }}" ] || { echo "::error::Variable SSH_UTILISATEUR manquante (Repository variables)"; exit 1; }
+          grep -q "BEGIN OPENSSH PRIVATE KEY" ~/.ssh/deploiement || { echo "::error::SSH_CLE_PRIVEE vide ou incomplète : coller tout la clé privée de déploiement, lignes BEGIN/END comprises"; exit 1; }
+          ssh-keygen -y -f ~/.ssh/deploiement > /dev/null || { echo "::error::SSH_CLE_PRIVEE illisible : recopier la clé privée de déploiement (pas la clé publique)"; exit 1; }
+          [ -s ~/.ssh/known_hosts ] || { echo "::error::SSH_KNOWN_HOSTS vide : coller la sortie de ssh-keyscan"; exit 1; }
+
+      - name: Tester la connexion SSH
+        if: env.SAUTER != '1' && (steps.dest.outputs.dossier != '')
+        run: |
+          # rsync --list-only plutôt qu'une commande shell : fonctionne aussi avec une clé
+          # limitée à rsync (serveur xmediacreation, rrsync)
+          if rsync --list-only -e "ssh -i ~/.ssh/deploiement -p ${{ vars.SSH_PORT || '22' }} -o BatchMode=yes -o ConnectTimeout=20" \
+               "${{ vars.SSH_UTILISATEUR }}@${{ vars.SSH_HOTE }}:${{ steps.dest.outputs.dossier }}/" > /dev/null 2> ssh.err; then
+            echo "Connexion SSH et dossier ${{ steps.dest.outputs.dossier }} : OK"
+          else
+            cat ssh.err
+            if grep -q "Host key verification failed" ssh.err; then echo "::error::Empreinte du serveur refusée : refaire ssh-keyscan et mettre à jour SSH_KNOWN_HOSTS"
+            elif grep -q "Permission denied (publickey" ssh.err; then echo "::error::Clé refusée par le serveur : la clé publique de déploiement n est pas autorisée pour le compte ${{ vars.SSH_UTILISATEUR }}"
+            elif grep -qi "timed out\|Could not resolve\|Connection refused" ssh.err; then echo "::error::Serveur injoignable : vérifier SSH_HOTE et SSH_PORT"
+            else echo "::error::Connexion OK mais dossier '${{ steps.dest.outputs.dossier }}' introuvable dans le compte, ou erreur SSH ci-dessus"; fi
+            exit 1
+          fi
+
+      - name: Envoyer sur le serveur
+        if: env.SAUTER != '1' && (steps.dest.outputs.dossier != '')
+        env:
+          DOSSIER: ${{ steps.dest.outputs.dossier }}
+        run: |
+          # Garde-fou : le dossier doit être un nom simple, jamais la racine du compte.
+          case "$DOSSIER" in ""|"/"|"."|".."|*" "*|/*|*..*) echo "DOSSIER invalide : '$DOSSIER'"; exit 1;; esac
+          rsync -rlz --delete --checksum \
+            --exclude '.htpasswd' --exclude '.ovhconfig' --exclude 'config*.php' \
+            -e "ssh -i ~/.ssh/deploiement -p ${{ vars.SSH_PORT || '22' }} -o BatchMode=yes" \
+            dist/ "${{ vars.SSH_UTILISATEUR }}@${{ vars.SSH_HOTE }}:${DOSSIER}/"
+
+      - name: Prévenir l'espace client (aperçu prêt)
+        if: env.CIBLE == 'apercu' && steps.dest.outputs.dossier != ''
+        env:
+          SECRET: ${{ secrets.XMEDIA_AI_SECRET }}
+          URL_PRODUCTION: ${{ vars.URL_PRODUCTION }}
+          URL_APERCU: ${{ steps.dest.outputs.url }}
+        run: |
+          [ -n "$SECRET" ] && [ -n "$URL_PRODUCTION" ] || { echo "Espace client non configuré"; exit 0; }
+          CORPS=$(jq -cn --arg b "$BRANCHE" --arg sha "$APERCU_SHA" --arg url "$URL_APERCU" --argjson ts "$(date +%s)" '{type:"apercu", branche:$b, sha:$sha, url:$url, ts:$ts}')
+          SIG=$(printf '%s' "$CORPS" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
+          curl -sS -L --post301 --post302 -X POST "${URL_PRODUCTION%/}/xmedia-ai/webhook.php" -H 'Content-Type: application/json' -H "X-Xmedia-Signature: sha256=$SIG" -d "$CORPS" || true
+
+      - name: Résumé
+        if: env.SAUTER != '1' && (steps.dest.outputs.dossier != '' && env.CIBLE != 'apercu')
+        run: |
+          echo "### Déployé en ${CIBLE} → ${{ steps.dest.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          # L'adresse déclarée doit être l'adresse finale : elle sert aux liens canoniques, au sitemap et aux données structurées
+          FINALE=$(curl -sS -L -o /dev/null -w '%{url_effective}' "${{ steps.dest.outputs.url }}/" || true)
+          if [ -n "$FINALE" ] && [ "${FINALE%/}" != "${{ steps.dest.outputs.url }}" ]; then
+            echo "::warning::${{ steps.dest.outputs.url }} redirige vers ${FINALE%/} : mettre cette adresse dans la variable URL_${CIBLE^^} (liens canoniques et sitemap)"
+          fi
+
+      - name: Prévenir Bing et les autres moteurs (IndexNow)
+        if: env.SAUTER != '1' && (env.CIBLE == 'production' && steps.dest.outputs.dossier != '' && steps.dest.outputs.noindex != '1')
+        continue-on-error: true
+        run: node scripts/indexnow.mjs envoyer indexnow-ancien.json
+        env:
+          SITE_URL: ${{ steps.dest.outputs.url }}
+          NOINDEX: ${{ steps.dest.outputs.noindex }}
+          INDEXNOW_CLE: ${{ vars.INDEXNOW_CLE }}
+
+      - name: Prévenir l'espace client (demandes mises en ligne)
+        if: env.SAUTER != '1' && (env.CIBLE == 'production' && steps.dest.outputs.dossier != '')
+        env:
+          SECRET: ${{ secrets.XMEDIA_AI_SECRET }}
+        run: |
+          [ -n "$SECRET" ] || { echo "Espace client non configuré"; exit 0; }
+          sleep 5
+          CORPS=$(jq -cn --arg sha "$GITHUB_SHA" '{type:"deploye", sha:$sha}')
+          SIG=$(printf '%s' "$CORPS" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
+          curl -sS -L --post301 --post302 -X POST "${{ steps.dest.outputs.url }}/xmedia-ai/webhook.php" -H 'Content-Type: application/json' -H "X-Xmedia-Signature: sha256=$SIG" -d "$CORPS" || true
+
+      - name: Mesure (empreinte des sites clients)
+        # Durée de ce déploiement et tokens des traductions, envoyés au site (webhook signé, une ligne par déploiement).
+        # L'agent du serveur en tire chaque nuit l'empreinte publiée. Jamais bloquant.
+        if: always()
+        continue-on-error: true
+        env:
+          SECRET: ${{ secrets.XMEDIA_AI_SECRET }}
+          URL_PRODUCTION: ${{ vars.URL_PRODUCTION }}
+          EVENEMENT: ${{ github.event_name }}
+          REF_NOM: ${{ github.ref_name }}
+          MESSAGE_COMMIT: ${{ github.event.head_commit.message }}
+        run: |
+          [ -n "$SECRET" ] && [ -n "$URL_PRODUCTION" ] || { echo "Espace client non configuré : pas de mesure"; exit 0; }
+          IA='{}'; [ -f .mesure-ia.json ] && IA=$(cat .mesure-ia.json)
+          # Origine : seul le service rendu aux clients entre dans l'empreinte publiée (pas le travail de l'agence).
+          #  xmedia-ai : aperçu demandé dans l'espace client, branche ia/ ou cms/, publication d'une demande sur main
+          #              (commit portant « Origine: xmedia-ai », écrit par l'espace client et par xm-agent)
+          #  automatique : reconstruction de chaque nuit, fusion des traductions (« Origine: automatique »)
+          #  agence : tout le reste (push de l'agence, relance à la main)
+          case "$EVENEMENT:$REF_NOM" in
+            repository_dispatch:*|push:ia/*|push:cms/*) ORIGINE=xmedia-ai ;;
+            schedule:*) ORIGINE=automatique ;;
+            push:*) ORIGINE=$(printf '%s' "$MESSAGE_COMMIT" | sed -n 's/^Origine: *\(xmedia-ai\|automatique\) *$/\1/p' | tail -1); ORIGINE=${ORIGINE:-agence} ;;
+            *) ORIGINE=agence ;;
+          esac
+          CORPS=$(jq -cn --argjson d "$(( $(date +%s) - ${DEBUT_MESURE:-$(date +%s)} ))" --arg run "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --argjson ts "$(date +%s)" --argjson ia "$IA" --arg o "$ORIGINE" \
+            '{type:"mesure", nature:"deploiement", origine:$o, duree_s:$d, run:$run, ts:$ts} + (if $ia.tokens then {tokens:$ia.tokens, modele:$ia.modele} else {} end)')
+          SIG=$(printf '%s' "$CORPS" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
+          curl -sS -L --post301 --post302 -X POST "${URL_PRODUCTION%/}/xmedia-ai/webhook.php" -H 'Content-Type: application/json' -H "X-Xmedia-Signature: sha256=$SIG" -d "$CORPS" || true
+
+  traductions:
+    # Enregistre les traductions préparées par le déploiement sur la branche « traductions » et ouvre la proposition.
+    # Seul content/traductions/ est accepté ; l'agent du serveur (xm-agent synchro) fusionne cette proposition.
+    needs: construire-et-deployer
+    if: ${{ needs.construire-et-deployer.outputs.traductions == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: main
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: traductions
+          path: _traductions
+      - name: Déposer les traductions sur la branche « traductions »
+        run: |
+          P=_traductions/traductions.patch
+          [ -s "$P" ] || { echo "Rien à enregistrer"; exit 0; }
+          HORS=$(git apply --numstat -z "$P" | tr '\0' '\n' | awk -F'\t' 'NF>=3{print $3} NF<3 && $0!=""{print $0}' | grep -v '^$' | grep -v '^content/traductions/' || true)
+          [ -z "$HORS" ] || { echo "::error::Fichiers hors de content/traductions/ refusés : $HORS"; exit 1; }
+          git apply --index --binary "$P" || { echo "::warning::Traductions inapplicables sur main (déjà enregistrées ?)"; exit 0; }
+          git diff --cached --quiet && { echo "Traductions déjà sur main"; exit 0; }
+          git config user.name "xmedia·ai"
+          git config user.email "xmedia-ai@users.noreply.github.com"
+          git commit -qm "Traductions mises à jour par l'IA (déploiement ${GITHUB_RUN_ID})"
+          # Branche refaite depuis main à chaque fois : elle contient toutes les traductions pas encore fusionnées
+          git push -q -f origin HEAD:refs/heads/traductions
+          PR=$(gh pr list --head traductions --base main --state open --json number --jq '.[0].number')
+          if [ -z "$PR" ]; then
+            gh pr create --base main --head traductions --title "Traductions mises à jour par l'IA" \
+              --body "Textes traduits pendant le déploiement (scripts/langues.mjs), seulement dans content/traductions/. Fusionnée automatiquement par l'agent du serveur." \
+              || echo "::warning::Proposition non créée (Settings → Actions → « Allow GitHub Actions to create and approve pull requests »)"
+          fi

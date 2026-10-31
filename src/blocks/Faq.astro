@@ -1,0 +1,56 @@
+---
+import Section from '../components/Section.astro';
+import Markdown from '../components/Markdown.astro';
+import { jsonLd } from '../lib/jsonld';
+import { markdownVersHtml } from '../lib/markdown';
+const { variant = 'accordeon', background, spacing, id, surtitre, titre, intro, items = [] } = Astro.props;
+const jsonld = {
+  '@context': 'https://schema.org', '@type': 'FAQPage',
+  mainEntity: await Promise.all(items.map(async (it: any) => ({ '@type': 'Question', name: it.question, acceptedAnswer: { '@type': 'Answer', text: await markdownVersHtml(it.reponse) } }))),
+};
+---
+{variant === 'titre-gauche' ? (
+<Section {background} {spacing} {id} class="faq-section--titre-gauche">
+  <div class="faq-tg">
+    <div class="faq-tg__entete">
+      {surtitre && <p class="eyebrow">{surtitre}</p>}
+      {titre && <h2 class="h2">{titre}</h2>}
+      {intro && <p class="faq-tg__intro">{intro}</p>}
+    </div>
+    <div class="faq faq--titre-gauche">
+      {items.map((it: any) => <div class="faq__item"><h3 class="faq__q">{it.question}</h3><Markdown source={it.reponse} class="faq__r" /></div>)}
+    </div>
+  </div>
+  <script type="application/ld+json" set:html={jsonLd(jsonld)} />
+</Section>
+) : (
+<Section {background} {spacing} {id} {surtitre} {titre} {intro} largeur={variant === 'accordeon' ? 'etroite' : 'normale'}>
+  <div class:list={['faq', `faq--${variant}`]}>
+    {items.map((it: any) => variant === 'accordeon'
+      ? <details class="faq__item"><summary class="faq__q">{it.question}</summary><Markdown source={it.reponse} class="faq__r" /></details>
+      : <div class="faq__item"><h3 class="faq__q">{it.question}</h3><Markdown source={it.reponse} class="faq__r" /></div>)}
+  </div>
+  <script type="application/ld+json" set:html={jsonLd(jsonld)} />
+</Section>
+)}
+<style>
+  .faq-tg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: clamp(32px, 4.5vw, 64px); align-items: start; }
+  @media (max-width: 860px) { .faq-tg { grid-template-columns: 1fr; } }
+  .faq-tg__entete { display: flex; flex-direction: column; gap: 16px; }
+  @media (min-width: 861px) { .faq-tg__entete { position: sticky; top: var(--hauteur-entete-fixe, 120px); } }
+  .faq-tg__intro { font-size: var(--fs-lg); color: var(--c-text-body); }
+  .faq--titre-gauche .faq__item { display: flex; flex-direction: column; gap: 10px; padding: 26px 0; border-bottom: 1px solid var(--c-border); }
+  .faq--titre-gauche .faq__item:first-child { padding-top: 8px; }
+  .faq--titre-gauche .faq__q { font-family: var(--font-sans); font-size: var(--fs-xl); font-weight: 600; }
+  .faq--titre-gauche :global(.faq__r) { font-size: var(--fs-lg); line-height: 1.6; }
+  :global(.faq-section--titre-gauche) { border-top: 1px solid var(--c-border); }
+  .faq--deux-colonnes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 28px 44px; }
+  .faq--accordeon .faq__item { border-bottom: 1px solid var(--c-border); }
+  .faq__q { font-family: var(--font-sans); font-size: var(--fs-lg); font-weight: 600; color: var(--c-text-strong); }
+  .faq--accordeon .faq__q { cursor: pointer; padding: 18px 32px 18px 0; list-style: none; position: relative; }
+  .faq--accordeon .faq__q::-webkit-details-marker { display: none; }
+  .faq--accordeon .faq__q::after { content: '+'; position: absolute; right: 4px; top: 14px; font-size: 24px; font-weight: 400; color: var(--c-primary); }
+  .faq--accordeon details[open] .faq__q::after { content: '−'; }
+  .faq--accordeon :global(.faq__r) { padding-bottom: 18px; font-size: 15px; }
+  .faq--deux-colonnes .faq__item { display: flex; flex-direction: column; gap: 8px; }
+</style>

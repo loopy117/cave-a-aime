@@ -1,0 +1,33 @@
+---
+import Img from '../components/Img.astro';
+import { urlElement } from '../lib/urls';
+const { element } = Astro.props;
+const d = element.data;
+const url = urlElement('services', element.id);
+---
+<article class="sc" data-metier={d.categorie}>
+  {d.image && <div class="sc__media"><Img image={d.image} sizes="(min-width: 1000px) 33vw, (min-width: 640px) 50vw, 100vw" largeurs={[480, 800, 1200]} /></div>}
+  <div class="sc__corps">
+    <h3 class="sc__titre"><span class="sc__trait" aria-hidden="true"></span><a href={url}>{d.titre}</a></h3>
+    {d.resume && <p class="sc__resume">{d.resume}</p>}
+    <ul class="sc__prestations">
+      {d.prestations.map((p: any) => <li>{p.label}{p.badge && <span class="sc__badge">{p.badge}</span>}</li>)}
+    </ul>
+    <span class="sc__lien" aria-hidden="true">{d.lien_label} →</span>
+  </div>
+</article>
+<style>
+  .sc { position: relative; height: 100%; border: 1px solid var(--c-border); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; background: var(--c-surface); transition: box-shadow .2s, transform .2s; }
+  .sc:hover { box-shadow: 0 10px 30px oklch(0.24 0.02 160 / 0.08); transform: translateY(-2px); }
+  .sc__media :global(img) { width: 100%; height: 190px; object-fit: cover; }
+  .sc__corps { padding: 22px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .sc__titre { display: flex; align-items: center; gap: 10px; font-size: var(--fs-xl); font-weight: 700; color: var(--c-text); }
+  .sc__titre a { color: inherit; }
+  .sc__titre a::after { content: ''; position: absolute; inset: 0; }
+  .sc__trait { width: 26px; height: 4px; border-radius: 2px; background: var(--metier); flex: none; }
+  .sc__resume { font-size: var(--fs-base); line-height: var(--lh-body); color: var(--c-text-muted); }
+  .sc__prestations { list-style: none; margin: auto 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+  .sc__prestations li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--c-text-body); }
+  .sc__badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: var(--radius-pill); background: var(--c-accent); color: oklch(0.26 0.05 130); }
+  .sc__lien { font-size: var(--fs-base); font-weight: 600; color: var(--c-link); padding-top: 6px; }
+</style>

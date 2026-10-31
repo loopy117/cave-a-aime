@@ -1,0 +1,13 @@
+---
+import { sortant, estExterne, NOUVEL_ONGLET } from '../lib/liens';
+interface Props { ctas: { label: string; href: string; style?: string }[]; taille?: 'sm' | 'md' }
+const { ctas, taille = 'md' } = Astro.props;
+---
+{ctas.length > 0 && (
+  <div class="boutons">
+    {ctas.map((c) => <a class:list={['btn', `btn--${c.style ?? 'primaire'}`, taille === 'sm' && 'btn--sm']} href={c.href} {...sortant(c.href, Astro.site)}>{c.label}{estExterne(c.href, Astro.site) && <Fragment set:html={NOUVEL_ONGLET} />}</a>)}
+  </div>
+)}
+<style>
+  .boutons { display: flex; flex-wrap: wrap; gap: 12px; }
+</style>

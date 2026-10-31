@@ -1,0 +1,495 @@
+---
+/**
+ * Bloc reservation : réservation en ligne du site (xmedia-serveur, /xmedia-ai/reserver.php), sans iframe ni cookie.
+ *
+ * - Sans JavaScript, ou si le serveur est injoignable : formulaire de demande (reserver.php?action=demande, envoi
+ *   classique), affiché d'emblée ; rangé dans les Demandes de l'espace client, puis /merci. L'établissement rappelle.
+ * - Avec JavaScript : la configuration est lue (prestations, personnes au choix, groupe maximal…), puis jours libres,
+ *   heures libres, coordonnées. Les horaires et les capacités ne sont jamais écrits dans le site : ils viennent du serveur.
+ * - Si le moteur répond « secours » (erreur côté serveur) : le formulaire de demande revient, prérempli avec les choix
+ *   du visiteur, et part vers reserver.php?action=secours (demande « Réservation à confirmer », urgente).
+ * - /reserver#annuler-<jeton> (lien de l'e-mail de confirmation) : la réservation s'affiche, avec « Annuler ».
+ * - /reserver#confirmer-<jeton> (rappel de la veille, si l'établissement l'a réglé) : la venue est reconfirmée, avec « Annuler ».
+ * - Mode lien : simple bouton vers l'outil du client (nouvel onglet) ; rien de tiers n'est chargé sur le site.
+ */
+import Section from '../components/Section.astro';
+import site from '../../data/site.json';
+
+const { variant = 'carte', background, spacing, id = 'reservation', surtitre, titre, intro, mode = 'moteur', lien, outil,
+  bouton = 'Réserver', note } = Astro.props;
+const carte = variant === 'carte';
+const tel = site.telephone ? 'tel:+33' + site.telephone.replace(/\s/g, '').replace(/^0/, '') : null;
+---
+<Section {background} {spacing} {id} surtitre={carte ? undefined : surtitre} titre={carte ? undefined : titre} intro={carte ? undefined : intro}>
+  <div class:list={['rs', `rs--${variant}`]}>
+    {carte && (
+      <div class="rs__entete">
+        {surtitre && <p class="eyebrow">{surtitre}</p>}
+        {titre && <h2 class="h2 rs__titre">{titre}</h2>}
+        {intro && <p class="rs__intro">{intro}</p>}
+        {tel && <p class="rs__appel">Vous préférez appeler ? <a href={tel}>{site.telephone}</a></p>}
+      </div>
+    )}
+
+    <div class="rs__boite">
+      {mode === 'lien' ? (
+        <div class="rs__lien">
+          <a class="btn btn--primaire rs__bouton" href={lien} target="_blank" rel="noopener" data-rs-externe>{bouton}<span class="visually-hidden"> (nouvel onglet)</span></a>
+          {outil && <p class="rs__petit">Réservation en ligne avec {outil}.</p>}
+          {note && <p class="rs__petit">{note}</p>}
+        </div>
+      ) : (
+        <div data-reservation data-bouton={bouton}>
+          <!-- Réservation en ligne : construite par le script quand le serveur répond -->
+          <form class="rs__form" data-rs-form hidden novalidate>
+            <fieldset class="rs__etape" data-rs-etape="prestation" hidden>
+              <legend>Prestation</legend>
+              <div class="rs__liste" data-rs-prestations></div>
+            </fieldset>
+            <fieldset class="rs__etape" data-rs-etape="personne" hidden>
+              <legend>Avec</legend>
+              <select class="rs__select" name="personne" data-rs-personne aria-label="Avec qui"></select>
+            </fieldset>
+            <fieldset class="rs__etape" data-rs-etape="personnes" hidden>
+              <legend>Nombre de personnes</legend>
+              <div class="rs__puces" data-rs-nombres></div>
+              <p class="rs__petit" data-rs-groupe></p>
+            </fieldset>
+            <fieldset class="rs__etape" data-rs-etape="jour">
+              <legend>Jour</legend>
+              <div class="rs__puces" data-rs-jours><p class="rs__petit">Recherche des jours disponibles…</p></div>
+              <label class="rs__autre" data-rs-autre-zone hidden>Date <input type="date" name="autre_date" data-rs-autre /></label>
+            </fieldset>
+            <fieldset class="rs__etape" data-rs-etape="heure">
+              <legend>Heure</legend>
+              <div class="rs__puces" data-rs-heures><p class="rs__petit">Choisissez d'abord un jour.</p></div>
+            </fieldset>
+            <fieldset class="rs__etape" data-rs-etape="coordonnees" disabled data-rs-coordonnees>
+              <legend>Vos coordonnées</legend>
+              <div class="rs__grille">
+                <div class="rs__champ"><label for="rs-nom">Nom</label><input id="rs-nom" name="nom" autocomplete="name" maxlength="100" required /></div>
+                <div class="rs__champ"><label for="rs-email">E-mail</label><input id="rs-email" name="email" type="email" autocomplete="email" maxlength="150" required /></div>
+                <div class="rs__champ"><label for="rs-tel">Téléphone <span class="rs__option">(facultatif)</span></label><input id="rs-tel" name="telephone" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" /></div>
+              </div>
+              <div class="rs__grille" data-rs-questions></div>
+              <div class="rs__champ"><label for="rs-message">Une précision ? <span class="rs__option">(facultatif)</span></label><textarea id="rs-message" name="message" rows="3" maxlength="1000"></textarea></div>
+              <label class="rs__accord" data-rs-politique hidden><input type="checkbox" name="politique_acceptee" value="1" /> <span data-rs-politique-texte></span></label>
+            </fieldset>
+            <div class="rs__piege" aria-hidden="true"><label>Site web (ne pas remplir)<input type="text" name="site_web" tabindex="-1" autocomplete="off" /></label></div>
+            <div class="rs__actions">
+              <button class="btn btn--primaire rs__bouton" type="submit" disabled data-rs-envoyer>{bouton}</button>
+              <p class="rs__statut" role="status" aria-live="polite" data-rs-statut></p>
+            </div>
+            <p class="rs__rgpd">Vos coordonnées servent uniquement à gérer votre réservation et ne sont jamais transmises à des tiers.</p>
+          </form>
+
+          <div class="rs__fin" data-rs-fin hidden tabindex="-1">
+            <p class="rs__fin-titre" data-rs-fin-titre></p>
+            <p data-rs-fin-texte></p>
+            <p class="rs__petit" data-rs-fin-ref></p>
+          </div>
+
+          <div class="rs__fin" data-rs-annulation hidden tabindex="-1">
+            <p class="rs__fin-titre">Votre réservation</p>
+            <p data-rs-annulation-texte></p>
+            <button class="btn btn--secondaire" type="button" hidden data-rs-annuler>Annuler ma réservation</button>
+            <p class="rs__statut" role="status" aria-live="polite" data-rs-annulation-statut></p>
+          </div>
+
+          <!-- Demande à confirmer : sans JavaScript, ou réservation en ligne indisponible -->
+          <form class="rs__form" method="post" action="/xmedia-ai/reserver.php?action=demande" data-rs-repli>
+            <p class="rs__avis" data-rs-repli-avis>Indiquez le jour, l'heure et le nombre de personnes souhaités : nous vous rappelons pour confirmer.</p>
+            <div class="rs__piege" aria-hidden="true"><label>Site web (ne pas remplir)<input type="text" name="site_web" tabindex="-1" autocomplete="off" /></label></div>
+            <div class="rs__grille">
+              <div class="rs__champ"><label for="rr-nom">Nom</label><input id="rr-nom" name="nom" autocomplete="name" maxlength="100" required /></div>
+              <div class="rs__champ"><label for="rr-tel">Téléphone</label><input id="rr-tel" name="telephone" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" required /></div>
+              <div class="rs__champ"><label for="rr-email">E-mail <span class="rs__option">(facultatif)</span></label><input id="rr-email" name="email" type="email" autocomplete="email" maxlength="150" /></div>
+            </div>
+            <div class="rs__champ"><label for="rr-message">Jour, heure et nombre de personnes</label><textarea id="rr-message" name="message" rows="3" maxlength="1000" required></textarea></div>
+            <div class="rs__actions">
+              <button class="btn btn--primaire rs__bouton" type="submit">Envoyer ma demande</button>
+              <p class="rs__statut" role="status" aria-live="polite" data-rs-repli-statut></p>
+            </div>
+          </form>
+          {note && <p class="rs__petit rs__note">{note}</p>}
+          {tel && !carte && <p class="rs__appel">Vous préférez appeler ? <a href={tel}>{site.telephone}</a></p>}
+        </div>
+      )}
+    </div>
+  </div>
+</Section>
+
+<script>
+  const API = '/xmedia-ai/reserver.php';
+  const FUSEAU = 'Europe/Paris';
+  type Config = { mode: string; prestations: { id: string; libelle: string; description: string; prix: string; duree: number; personnes: { id: string; nom: string }[] }[];
+    groupe_min: number; groupe_max: number; horizon: number; questions: { id: string; libelle: string; type?: string; options?: string[]; obligatoire?: boolean }[]; politique: string; telephone: string };
+  class Indisponible extends Error { constructor(public secours: boolean) { super('indisponible'); } }
+
+  /** Appel du moteur, 5 secondes au plus. Erreur du serveur → Indisponible(secours) ; refus (422…) → réponse rendue. */
+  async function appel(action: string, q: Record<string, string> = {}, corps?: object): Promise<any> {
+    const ctrl = new AbortController();
+    const minuterie = setTimeout(() => ctrl.abort(), 5000);
+    try {
+      const rep = await fetch(`${API}?action=${action}` + Object.entries(q).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join(''), {
+        method: corps ? 'POST' : 'GET', signal: ctrl.signal, credentials: 'omit',
+        headers: corps ? { 'Content-Type': 'application/json', 'X-Reservation': '1' } : {}, body: corps ? JSON.stringify(corps) : undefined,
+      });
+      let r: any;
+      try { r = await rep.json(); } catch { throw new Indisponible(false); }
+      if (rep.status >= 500) throw new Indisponible(!!r?.secours);
+      return { ...r, statut_http: rep.status };
+    } catch (e) {
+      if (e instanceof Indisponible) throw e;
+      throw new Indisponible(false);
+    } finally { clearTimeout(minuterie); }
+  }
+
+  const aujourdhui = () => new Intl.DateTimeFormat('en-CA', { timeZone: FUSEAU }).format(new Date());
+  const ajouterJours = (d: string, n: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+  const jourLisible = (d: string, long = false) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: long ? 'long' : 'short', day: 'numeric', month: long ? 'long' : 'short' }).format(new Date(d + 'T12:00:00Z'));
+  const duree = (m: number) => m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''}`;
+  const el = <T extends Element = HTMLElement>(racine: Element, sel: string) => racine.querySelector<T>(sel as any)! as T;
+
+  function puce(nom: string, valeur: string, texte: string, coche = false): HTMLLabelElement {
+    const l = document.createElement('label');
+    l.className = 'rs__puce';
+    const i = document.createElement('input');
+    i.type = 'radio'; i.name = nom; i.value = valeur; i.checked = coche;
+    const s = document.createElement('span');
+    s.textContent = texte;
+    l.append(i, s);
+    return l;
+  }
+  function texte(cible: HTMLElement, t: string) {
+    cible.replaceChildren();
+    const p = document.createElement('p'); p.className = 'rs__petit'; p.textContent = t; cible.append(p);
+  }
+
+  for (const racine of document.querySelectorAll<HTMLElement>('[data-reservation]')) {
+    const form = el<HTMLFormElement>(racine, '[data-rs-form]');
+    const repli = el<HTMLFormElement>(racine, '[data-rs-repli]');
+    const statut = el(racine, '[data-rs-statut]');
+    const envoyer = el<HTMLButtonElement>(racine, '[data-rs-envoyer]');
+    const coord = el<HTMLFieldSetElement>(racine, '[data-rs-coordonnees]');
+    const zoneJours = el(racine, '[data-rs-jours]'), zoneHeures = el(racine, '[data-rs-heures]');
+    const autre = el<HTMLInputElement>(racine, '[data-rs-autre]');
+    const selPersonne = el<HTMLSelectElement>(racine, '[data-rs-personne]');
+    let config: Config | null = null;
+    let enSecours = false;
+    const choix = () => {
+      const f = new FormData(form);
+      return { prestation: String(f.get('prestation') || config?.prestations[0]?.id || ''), personnes: String(f.get('personnes') || '1'),
+        personne: String(f.get('personne') || ''), date: String(f.get('jour') === 'autre' ? autre.value : (f.get('jour') || '')), heure: String(f.get('heure') || '') };
+    };
+
+    /** Réservation en ligne indisponible : le formulaire de demande revient, prérempli avec les choix déjà faits. */
+    function basculer(secours: boolean) {
+      form.hidden = true;
+      repli.hidden = false;
+      enSecours = secours;
+      const c = config ? choix() : null;
+      const avis = el(racine, '[data-rs-repli-avis]');
+      avis.textContent = "La réservation en ligne est momentanément indisponible. Laissez votre demande : ce n'est pas encore une réservation, nous vous rappelons pour la confirmer.";
+      avis.classList.add('rs__avis--alerte');
+      if (c && config) {
+        const p = config.prestations.find((x) => x.id === c.prestation);
+        const morceaux = [c.date && jourLisible(c.date, true), c.heure && `à ${c.heure.replace(':', ' h ')}`,
+          config.mode === 'places' ? `${c.personnes} personne${c.personnes === '1' ? '' : 's'}` : p?.libelle].filter(Boolean);
+        const m = el<HTMLTextAreaElement>(repli, '[name="message"]');
+        if (!m.value) m.value = morceaux.join(', ');
+        for (const k of ['nom', 'email', 'telephone']) {
+          const v = (form.elements.namedItem(k) as HTMLInputElement | null)?.value;
+          const cible = repli.elements.namedItem(k) as HTMLInputElement | null;
+          if (v && cible && !cible.value) cible.value = v;
+        }
+      }
+      el<HTMLElement>(repli, 'input[name="nom"]').focus();
+    }
+
+    // Formulaire de demande : en secours, envoyé au moteur (demande étiquetée « Réservation à confirmer ») ; sinon, ou si
+    // le moteur ne répond plus du tout, envoi ordinaire vers /formulaire/envoi.php (sans JavaScript : envoi natif).
+    repli.addEventListener('submit', async (ev) => {
+      if (!enSecours) return;
+      ev.preventDefault();
+      if (!repli.reportValidity()) return;
+      const st = el(repli, '[data-rs-repli-statut]');
+      const f = new FormData(repli);
+      const c = config ? choix() : { prestation: '', personnes: '', personne: '', date: '', heure: '' };
+      const p = config?.prestations.find((x) => x.id === c.prestation);
+      st.textContent = 'Envoi en cours…'; st.dataset.etat = '';
+      try {
+        const r = await appel('secours', {}, { nom: f.get('nom'), email: f.get('email'), telephone: f.get('telephone'), message: f.get('message'), site_web: f.get('site_web'),
+          date: c.date, heure: c.heure, personnes: config?.mode === 'places' ? Number(c.personnes) : 0, prestation: c.prestation, prestation_libelle: p?.libelle ?? '',
+          personne_nom: selPersonne.selectedOptions[0]?.value ? selPersonne.selectedOptions[0].textContent : '' });
+        st.dataset.etat = r.ok ? 'ok' : 'erreur';
+        st.textContent = r.message;
+        if (r.ok) repli.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>('input, textarea, button').forEach((x) => (x.disabled = true));
+      } catch {
+        enSecours = false;
+        repli.submit();
+      }
+    });
+
+    async function chargerJours() {
+      if (!config) return;
+      const c = choix();
+      zoneHeures.replaceChildren(); texte(zoneHeures, "Choisissez d'abord un jour.");
+      majEnvoi();
+      texte(zoneJours, 'Recherche des jours disponibles…');
+      const debut = aujourdhui();
+      const fin = ajouterJours(debut, config.horizon);
+      autre.min = debut; autre.max = fin;
+      const mois = [debut.slice(0, 7), ajouterJours(debut.slice(0, 7) + '-28', 7).slice(0, 7)];
+      const q = { prestation: c.prestation, personnes: c.personnes, ...(c.personne ? { personne: c.personne } : {}) };
+      try {
+        const listes = await Promise.all(mois.map((m) => appel('jours', { ...q, mois: m })));
+        const refus = listes.find((r) => !r.ok);
+        if (refus) { texte(zoneJours, refus.message); return; }
+        const jours = listes.flatMap((r) => r.jours as string[]).filter((d) => d >= debut && d <= fin).slice(0, 10);
+        zoneJours.replaceChildren(...jours.map((d, i) => puce('jour', d, jourLisible(d), i === 0)));
+        if (!jours.length) texte(zoneJours, 'Aucun jour libre dans les semaines qui viennent : choisissez une autre date ou appelez-nous.');
+        zoneJours.append(puce('jour', 'autre', 'Autre date'));
+        if (jours.length) await chargerHeures();
+      } catch (e) { basculer((e as Indisponible).secours); }
+    }
+
+    async function chargerHeures() {
+      const c = choix();
+      if (!config || !c.date) { texte(zoneHeures, "Choisissez d'abord un jour."); majEnvoi(); return; }
+      texte(zoneHeures, 'Recherche des heures disponibles…');
+      try {
+        const r = await appel('creneaux', { prestation: c.prestation, personnes: c.personnes, date: c.date, ...(c.personne ? { personne: c.personne } : {}) });
+        if (!r.ok) { texte(zoneHeures, r.message); majEnvoi(); return; }
+        const heures: string[] = r.creneaux;
+        zoneHeures.replaceChildren(...heures.map((h) => puce('heure', h, h.replace(':', ' h '))));
+        if (!heures.length) texte(zoneHeures, `Plus de place le ${jourLisible(c.date, true)} : choisissez un autre jour.`);
+      } catch (e) { basculer((e as Indisponible).secours); }
+      majEnvoi();
+    }
+
+    function majEnvoi() {
+      const pret = !!choix().heure;
+      coord.disabled = !pret;
+      envoyer.disabled = !pret;
+    }
+
+    form.addEventListener('change', (ev) => {
+      const t = ev.target as HTMLInputElement;
+      if (['prestation', 'personnes', 'personne'].includes(t.name)) {
+        if (t.name === 'prestation') remplirPersonnes();
+        chargerJours();
+      } else if (t.name === 'jour') {
+        el(racine, '[data-rs-autre-zone]').hidden = t.value !== 'autre';
+        if (t.value === 'autre') { autre.focus(); if (autre.value) chargerHeures(); else { texte(zoneHeures, 'Choisissez une date.'); majEnvoi(); } }
+        else chargerHeures();
+      } else if (t === autre) {
+        const r = form.querySelector<HTMLInputElement>('input[name="jour"][value="autre"]');
+        if (r) r.checked = true;
+        chargerHeures();
+      } else if (t.name === 'heure') majEnvoi();
+    });
+
+    function remplirPersonnes() {
+      if (!config) return;
+      const p = config.prestations.find((x) => x.id === choix().prestation);
+      const l = p?.personnes ?? [];
+      selPersonne.replaceChildren(new Option('Sans préférence', ''), ...l.map((x) => new Option(x.nom, x.id)));
+      el(racine, '[data-rs-etape="personne"]').hidden = l.length < 2;
+    }
+
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      if (!config) return;
+      statut.textContent = ''; statut.dataset.etat = '';
+      coord.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
+      const invalide = [...coord.querySelectorAll<HTMLInputElement>('input, select, textarea')].find((x) => !x.checkValidity());
+      if (invalide) {
+        invalide.setAttribute('aria-invalid', 'true'); invalide.focus();
+        statut.dataset.etat = 'erreur';
+        statut.textContent = invalide.validity.valueMissing ? (invalide.type === 'checkbox' ? "Merci d'accepter les conditions de réservation." : 'Ce champ est obligatoire.') : 'Format invalide.';
+        return;
+      }
+      const f = new FormData(form);
+      const c = choix();
+      const reponses: Record<string, string> = {};
+      for (const q of config.questions) reponses[q.id] = String(f.get('q_' + q.id) || '');
+      envoyer.disabled = true;
+      statut.textContent = 'Réservation en cours…';
+      try {
+        const r = await appel('reserver', {}, { ...c, personnes: Number(c.personnes), personne: c.personne || null, nom: f.get('nom'), email: f.get('email'),
+          telephone: f.get('telephone'), message: f.get('message'), reponses, politique_acceptee: !!f.get('politique_acceptee'), site_web: f.get('site_web') });
+        if (!r.ok) {
+          statut.dataset.etat = 'erreur'; statut.textContent = r.message;
+          if (/plus disponible|vient d'être pris/.test(r.message)) await chargerHeures();
+          envoyer.disabled = false;
+          return;
+        }
+        form.hidden = true;
+        const fin = el(racine, '[data-rs-fin]');
+        el(fin, '[data-rs-fin-titre]').textContent = r.statut === 'confirmee' ? 'Réservation confirmée' : 'Demande de réservation reçue';
+        el(fin, '[data-rs-fin-texte]').textContent = `${r.quand ? r.quand.charAt(0).toUpperCase() + r.quand.slice(1) + '. ' : ''}${r.message}`;
+        el(fin, '[data-rs-fin-ref]').textContent = r.reference ? `Référence : ${r.reference}` : '';
+        fin.hidden = false; fin.focus();
+      } catch (e) { basculer((e as Indisponible).secours); }
+    });
+
+    /** Liens des e-mails : /reserver#annuler-<jeton> (voir, annuler) ; /reserver#confirmer-<jeton> (rappel de la veille :
+     *  la venue est confirmée dès l'ouverture par le script, jamais par un simple chargement de la page sans JavaScript). */
+    async function annulation(jeton: string, confirmer = false) {
+      form.hidden = true; repli.hidden = true;
+      const zone = el(racine, '[data-rs-annulation]');
+      const t = el(zone, '[data-rs-annulation-texte]'), b = el<HTMLButtonElement>(zone, '[data-rs-annuler]'), st = el(zone, '[data-rs-annulation-statut]');
+      zone.hidden = false;
+      t.textContent = 'Recherche de votre réservation…';
+      history.replaceState(null, '', location.pathname);       // le jeton ne reste pas dans la barre d'adresse
+      const afficher = (x: any) => {
+        t.textContent = `${x.quand.charAt(0).toUpperCase() + x.quand.slice(1)} · ${x.prestation}${x.personnes > 1 ? ` · ${x.personnes} personnes` : ''} · ${x.statut_libelle} (référence ${x.reference}).`;
+        b.hidden = !x.annulable;
+      };
+      try {
+        const r = await appel('reservation', { jeton });
+        if (!r.ok) { t.textContent = r.message + ' Le lien a peut-être déjà servi : contactez-nous.'; return; }
+        afficher(r.reservation);
+        if (confirmer && r.reservation.reconfirmable) {
+          try {
+            const c = await appel('confirmer', {}, { jeton });
+            st.dataset.etat = c.ok ? 'ok' : 'erreur'; st.textContent = c.message;
+            if (c.ok) afficher(c.reservation);
+          } catch { st.dataset.etat = 'erreur'; st.textContent = "La confirmation n'a pas abouti. Réessayez, ou appelez-nous."; }
+        }
+        zone.focus();
+        b.addEventListener('click', async () => {
+          b.disabled = true; st.textContent = 'Annulation en cours…';
+          try {
+            const a = await appel('annuler', {}, { jeton });
+            st.dataset.etat = a.ok ? 'ok' : 'erreur'; st.textContent = a.message;
+            if (a.ok) afficher(a.reservation); else b.disabled = false;
+          } catch { st.dataset.etat = 'erreur'; st.textContent = "L'annulation n'a pas abouti. Appelez-nous pour annuler."; b.disabled = false; }
+        });
+      } catch { t.textContent = "La réservation ne peut pas s'afficher pour l'instant. Appelez-nous pour la modifier ou l'annuler."; }
+    }
+
+    async function demarrer() {
+      if (new URLSearchParams(location.search).get('demande') === 'erreur') {
+        const st = el(racine, '[data-rs-repli-statut]');
+        st.dataset.etat = 'erreur'; st.textContent = "La demande n'est pas partie : indiquez votre nom, votre téléphone et votre souhait.";
+      }
+      const m = /^#(annuler|confirmer)-([a-f0-9]{48})$/.exec(location.hash);
+      if (m) return annulation(m[2], m[1] === 'confirmer');
+      let r: any;
+      try { r = await appel('config'); } catch (e) { if ((e as Indisponible).secours) basculer(true); return; }
+      if (!r.ok) return;                       // site sans réservation en ligne : le formulaire de demande reste
+      config = r as Config;
+      // Prestations : choix seulement s'il y en a plusieurs
+      const zoneP = el(racine, '[data-rs-prestations]');
+      zoneP.replaceChildren(...config.prestations.map((p, i) => {
+        const l = puce('prestation', p.id, '', i === 0);
+        l.classList.add('rs__puce--large');
+        const s = l.querySelector('span')!;
+        const nom = document.createElement('strong'); nom.textContent = p.libelle;
+        const d = document.createElement('small'); d.textContent = [duree(p.duree), p.prix].filter(Boolean).join(' · ');
+        s.append(nom, d);
+        return l;
+      }));
+      el(racine, '[data-rs-etape="prestation"]').hidden = config.prestations.length < 2;
+      remplirPersonnes();
+      if (config.mode === 'places') {
+        const n = el(racine, '[data-rs-nombres]');
+        const defaut = Math.min(Math.max(2, config.groupe_min), config.groupe_max);
+        for (let i = config.groupe_min; i <= config.groupe_max; i++) n.append(puce('personnes', String(i), String(i), i === defaut));
+        el(racine, '[data-rs-groupe]').textContent = `Au-delà de ${config.groupe_max} personnes, contactez-nous directement${config.telephone ? ` au ${config.telephone}` : ''}.`;
+        el(racine, '[data-rs-etape="personnes"]').hidden = false;
+      }
+      // Questions du métier et conditions
+      const zq = el(racine, '[data-rs-questions]');
+      for (const q of config.questions) {
+        const d = document.createElement('div'); d.className = 'rs__champ';
+        const l = document.createElement('label'); l.htmlFor = 'rs-q-' + q.id; l.textContent = q.libelle;
+        if (!q.obligatoire) { const o = document.createElement('span'); o.className = 'rs__option'; o.textContent = ' (facultatif)'; l.append(o); }
+        let champ: HTMLInputElement | HTMLSelectElement;
+        if (q.options?.length) { champ = document.createElement('select'); champ.className = 'rs__select'; champ.append(new Option('Choisir…', ''), ...q.options.map((o) => new Option(o, o))); }
+        else { champ = document.createElement('input'); (champ as HTMLInputElement).maxLength = 300; }
+        champ.id = 'rs-q-' + q.id; champ.name = 'q_' + q.id; champ.required = !!q.obligatoire;
+        d.append(l, champ); zq.append(d);
+      }
+      if (config.politique) {
+        const p = el(racine, '[data-rs-politique]');
+        el(p, '[data-rs-politique-texte]').textContent = `J'accepte les conditions : ${config.politique}`;
+        el<HTMLInputElement>(p, 'input').required = true;
+        p.hidden = false;
+      }
+      repli.hidden = true;
+      form.hidden = false;
+      await chargerJours();
+    }
+    demarrer();
+    // Lien d'annulation ouvert alors que la page est déjà affichée
+    addEventListener('hashchange', () => { const m = /^#(annuler|confirmer)-([a-f0-9]{48})$/.exec(location.hash); if (m) annulation(m[2], m[1] === 'confirmer'); });
+  }
+</script>
+
+<style>
+  .rs { display: grid; gap: 44px; align-items: start; }
+  .rs--carte { grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: clamp(32px, 5vw, 72px); }
+  .rs__entete { display: flex; flex-direction: column; gap: 20px; }
+  @media (min-width: 900px) { .rs--carte .rs__entete { position: sticky; top: var(--hauteur-entete-fixe, 120px); } }
+  .rs__titre { font-size: var(--fs-h2-lg); line-height: 1.05; }
+  .rs__intro { font-size: var(--fs-xl); line-height: 1.6; }
+  .rs__appel { font-size: var(--fs-base); color: var(--c-text-body); }
+  .rs__appel a { font-weight: 700; color: inherit; white-space: nowrap; }
+  .rs__boite { padding: clamp(20px, 3vw, 36px); border-radius: 24px; background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-ink, var(--c-text)); }
+  .rs--simple .rs__boite { max-width: 720px; }
+  .rs__form { display: flex; flex-direction: column; gap: 22px; }
+  .rs__form[hidden], .rs__fin[hidden], .rs__etape[hidden], .rs__accord[hidden] { display: none; }
+  .rs__etape { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .rs__etape:disabled { opacity: 0.55; }
+  .rs__etape legend { font-weight: 700; color: var(--c-text-strong); font-size: var(--fs-md); padding: 0; margin-bottom: 10px; }
+  .rs__puces { display: flex; flex-wrap: wrap; gap: 8px; }
+  .rs__liste { display: grid; gap: 8px; }
+  /* Éléments créés par le script (sans attribut de portée) : sélecteurs :global, toujours sous .rs */
+  .rs :global(.rs__puce) { position: relative; display: inline-flex; cursor: pointer; }
+  .rs :global(.rs__puce input) { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .rs :global(.rs__puce span) { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 52px; min-height: 48px; padding: 8px 14px;
+    border: 1.5px solid var(--c-border); border-radius: 12px; background: var(--c-surface); color: var(--c-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rs :global(.rs__puce--large), .rs :global(.rs__puce--large span) { display: flex; width: 100%; }
+  .rs :global(.rs__puce--large span) { align-items: flex-start; text-align: left; gap: 2px; }
+  .rs :global(.rs__puce--large small) { font-weight: 400; color: var(--c-text-muted); font-size: 13px; }
+  .rs :global(.rs__puce:hover span) { border-color: var(--c-primary); }
+  .rs :global(.rs__puce input:checked + span) { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+  .rs :global(.rs__puce input:checked + span small) { color: inherit; }
+  .rs :global(.rs__puce input:focus-visible + span) { outline: 3px solid var(--c-primary); outline-offset: 2px; }
+  .rs__autre[hidden] { display: none; }
+  .rs__autre { display: inline-flex; align-items: center; gap: 10px; font-size: var(--fs-base); color: var(--c-text-body); flex-wrap: wrap; }
+  .rs :global(input:not([type='radio']):not([type='checkbox'])), .rs :global(select), .rs :global(textarea) {
+    font: inherit; font-size: var(--fs-md); color: var(--c-text); background: var(--c-surface); border: 1.5px solid var(--c-border); border-radius: 10px; padding: 11px 14px; width: 100%; }
+  .rs__autre input { width: auto !important; }
+  .rs :global(input:focus), .rs :global(select:focus), .rs :global(textarea:focus) { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in oklch, var(--c-primary) 20%, transparent); }
+  .rs :global([aria-invalid='true']) { border-color: oklch(0.55 0.2 25); }
+  .rs__grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 14px 18px; }
+  .rs__grille:empty { display: none; }
+  .rs :global(.rs__champ) { display: flex; flex-direction: column; gap: 6px; }
+  .rs :global(.rs__champ label) { font-weight: 600; color: var(--c-text-strong); font-size: var(--fs-base); }
+  .rs :global(.rs__option) { font-weight: 400; color: var(--c-text-muted); font-size: 13px; }
+  .rs__accord { display: flex; gap: 10px; align-items: flex-start; font-size: var(--fs-base); color: var(--c-text-body); cursor: pointer; }
+  .rs__accord input { width: 20px; height: 20px; margin-top: 2px; flex: none; accent-color: var(--c-primary); }
+  .rs__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+  .rs__bouton { min-height: 52px; padding-inline: 28px; font-size: var(--fs-md); }
+  .rs__bouton:disabled { opacity: 0.5; cursor: not-allowed; }
+  .rs__statut { font-size: var(--fs-base); color: var(--c-text-muted); }
+  .rs__statut[data-etat='ok'] { color: var(--c-primary); font-weight: 600; }
+  .rs__statut[data-etat='erreur'] { color: oklch(0.5 0.2 25); font-weight: 600; }
+  .rs :global(.rs__petit) { font-size: 14px; color: var(--c-text-muted); }
+  .rs__note { margin-top: 16px; }
+  .rs__rgpd { font-size: 12.5px; color: var(--c-text-muted); }
+  .rs__avis { font-size: var(--fs-base); color: var(--c-text-body); }
+  .rs__avis--alerte { padding: 12px 14px; border-radius: 10px; background: color-mix(in oklch, var(--c-accent, var(--c-primary)) 14%, var(--c-surface)); color: var(--c-text-strong); font-weight: 600; }
+  .rs__piege { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .rs__fin { display: flex; flex-direction: column; gap: 10px; }
+  .rs__fin:focus { outline: none; }
+  .rs__fin-titre { font-size: var(--fs-h3, 1.4rem); font-weight: 700; color: var(--c-text-strong); }
+  .rs__lien { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  /* Section sombre : la boîte reste claire */
+  :global(.on-dark) .rs__entete, :global(.on-dark) .rs__appel { color: var(--c-on-dark); }
+  :global(.on-dark) .rs__intro { color: var(--c-on-dark-body); }
+</style>

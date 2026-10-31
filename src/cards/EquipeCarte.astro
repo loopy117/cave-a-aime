@@ -1,0 +1,35 @@
+---
+/** Carte d'équipe : type en badge, nom, âges ou championnat, créneaux de la semaine, lien vers la page. */
+import { urlElement } from '../lib/urls';
+import { plage, jourCourt } from '../lib/creneaux';
+import taxonomies from '../../data/taxonomies.json';
+const { element } = Astro.props;
+const d = element.data;
+const type = (taxonomies.metiers as Record<string, string>)[d.categorie];
+const precision = d.ages ?? d.championnat;
+---
+<article class="eq" data-type={d.categorie}>
+  <p class="eq__type">{type}</p>
+  <h3 class="eq__titre"><a href={urlElement('equipes', element.id)}>{d.nom_court}</a></h3>
+  {precision && <p class="eq__precision">{precision}</p>}
+  {d.creneaux.length > 0
+    ? <ul class="eq__creneaux" role="list">{d.creneaux.map((c: any) => <li><span class="eq__jour">{jourCourt(c.jour)}</span> {plage(c)}{c.lieu && <span class="eq__lieu"> · {c.lieu}</span>}</li>)}</ul>
+    : <p class="eq__precision">Horaires sur demande</p>}
+</article>
+<style>
+  .eq { position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 22px; background: var(--c-surface); border: 1px solid var(--c-border); border-top: 4px solid var(--c-primary); border-radius: var(--radius-lg); transition: box-shadow .2s, transform .2s; }
+  .eq[data-type="competition"] { border-top-color: var(--c-accent); }
+  .eq[data-type="ecole"] { border-top-color: var(--c-bleu, var(--c-primary)); }
+  .eq:hover, .eq:focus-within { box-shadow: 0 10px 30px rgb(0 0 0 / 0.1); transform: translateY(-2px); }
+  .eq__type { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--c-eyebrow); }
+  .eq__titre { margin: 0; font-size: var(--fs-h3); line-height: 1.05; color: var(--c-text-strong); }
+  .eq__titre a { color: inherit; text-decoration: none; }
+  .eq__titre a::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+  .eq__titre a:focus-visible { outline: none; }
+  .eq:has(a:focus-visible) { outline: 3px solid var(--c-link); outline-offset: 2px; }
+  .eq__precision { margin: 0; color: var(--c-text-muted); }
+  .eq__creneaux { list-style: none; margin: 6px 0 0; padding: 12px 0 0; border-top: 1px solid var(--c-border-soft); display: flex; flex-direction: column; gap: 6px; color: var(--c-text-body); }
+  .eq__jour { display: inline-block; min-width: 3.2em; font-weight: 700; color: var(--c-text-strong); }
+  .eq__lieu { color: var(--c-text-muted); }
+  @media (prefers-reduced-motion: reduce) { .eq { transition: none; } .eq:hover { transform: none; } }
+</style>

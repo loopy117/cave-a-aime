@@ -1,0 +1,354 @@
+# Réalisation d'une demande de l'espace client xmedia·ai.
+# Déclenché par le site (repository_dispatch) quand le client valide un récapitulatif ou répond à une question.
+#
+# Deux jobs, pour qu'une consigne piégée (document du client, témoignage, résultat de recherche) ne puisse rien publier :
+#  - « realiser » : Claude travaille avec un jeton GitHub en LECTURE SEULE et ne peut écrire que dans content/, media/,
+#    data/ et _demande/. Il produit un correctif (patch), sans rien pousser.
+#  - « publier » : sans IA. Applique du correctif les seuls fichiers permis, valide avec le code du site, enregistre
+#    la branche ia/…, ouvre la proposition et prévient le site. Rien ne part en ligne sans relecture.
+name: Demande xmedia·ai
+
+on:
+  repository_dispatch:
+    types: [xmedia-ai]
+  # Relance à la main par l'agence (onglet Actions → Demande xmedia·ai → Run workflow)
+  workflow_dispatch:
+    inputs:
+      id:
+        description: "Identifiant de la demande (ex. 20260929-ab12cd34)"
+        required: true
+      action:
+        description: "realiser (première réalisation), completer (après les réponses du client) ou corriger (corrections demandées sur l'aperçu)"
+        type: choice
+        options: [realiser, completer, corriger]
+        default: realiser
+
+concurrency:
+  group: demande-${{ github.event.client_payload.id || inputs.id }}
+  cancel-in-progress: false
+
+# Par défaut, aucun droit d'écriture : seul le job « publier » en reçoit
+permissions:
+  contents: read
+
+env:
+  ID: ${{ github.event.client_payload.id || inputs.id }}
+  ACTION: ${{ github.event.client_payload.action || inputs.action }}
+
+jobs:
+  realiser:
+    # Ces workflows servent aux sites ; dans le dépôt du socle lui-même (sans contenus) ils ne tournent pas
+    if: ${{ github.repository != 'loopy117/socle-sites' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    outputs:
+      debut: ${{ steps.debut.outputs.debut }}
+      branche: ${{ steps.branche.outputs.branche }}
+      base: ${{ steps.branche.outputs.base }}
+    env:
+      # Mémoire de Node pour la construction : environ 2 Go par défaut, trop peu pour un gros site (plus de 1 000 pages).
+      # 6 Go sur une machine GitHub de 7 à 8 Go ; réglable par site avec la variable NODE_OPTIONS du dépôt.
+      NODE_OPTIONS: ${{ vars.NODE_OPTIONS || '--max-old-space-size=6144' }}
+      URL_PRODUCTION: ${{ vars.URL_PRODUCTION }}
+    steps:
+      - name: Début de la mesure (empreinte)
+        id: debut
+        run: echo "debut=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Vérifier la demande
+        run: |
+          [[ "$ID" =~ ^[0-9]{8}-[a-f0-9]{8}$ ]] || { echo "::error::Identifiant de demande invalide"; exit 1; }
+          [[ "$ACTION" =~ ^(realiser|completer|corriger)$ ]] || { echo "::error::Action inconnue"; exit 1; }
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Catalogue des blocs propre au site (modèle, métiers, icônes), lu par Claude avant de composer
+      - run: npm run catalogue
+
+      - name: Récupérer la demande et les photos
+        # Téléchargement signé depuis le site (webhook.php, type « export ») : les données restent
+        # inaccessibles au compte de déploiement sur le serveur. Le secret ne sert qu'à cette étape, avant Claude.
+        env:
+          SECRET: ${{ secrets.XMEDIA_AI_SECRET }}
+        run: |
+          mkdir -p _demande
+          CORPS=$(jq -cn --arg id "$ID" --argjson ts "$(date +%s)" '{type:"export", id:$id, ts:$ts}')
+          SIG=$(printf '%s' "$CORPS" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
+          CODE=$(curl -sS -L --post301 --post302 -o _demande/demande.tar -w '%{http_code}' -X POST "${URL_PRODUCTION%/}/xmedia-ai/webhook.php" \
+            -H 'Content-Type: application/json' -H "X-Xmedia-Signature: sha256=$SIG" -d "$CORPS")
+          [ "$CODE" = 200 ] || { echo "::error::Demande non récupérée (HTTP $CODE) : $(head -c 300 _demande/demande.tar)"; exit 1; }
+          tar -xf _demande/demande.tar -C _demande && rm _demande/demande.tar
+          jq -e '.recap' _demande/demande.json > /dev/null || { echo "::error::Récapitulatif absent"; exit 1; }
+
+      - name: Préparer la branche
+        id: branche
+        run: |
+          BR=$(jq -r '.branche // empty' _demande/demande.json)
+          [ -n "$BR" ] || BR="ia/$(date +%F)-$ID"
+          [[ "$BR" =~ ^ia/[A-Za-z0-9._/-]{1,200}$ ]] && [[ "$BR" != *..* ]] || { echo "::error::Branche refusée : $BR"; exit 1; }
+          if git ls-remote --exit-code --heads origin "$BR" > /dev/null; then git checkout -q "$BR"; else git checkout -q -b "$BR"; fi
+          echo "branche=$BR" >> "$GITHUB_OUTPUT"
+          # Version de départ : le job « publier » applique le correctif exactement sur elle
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Limite de tours selon la demande
+        # Un brief met tout le site en place : beaucoup plus de fichiers qu'une demande ordinaire
+        run: |
+          if [ "$(jq -r '.type // empty' _demande/demande.json)" = brief ]; then echo "TOURS=160" >> "$GITHUB_ENV"; else echo "TOURS=60" >> "$GITHUB_ENV"; fi
+
+      - name: Réalisation par Claude
+        uses: anthropics/claude-code-action@8041f1d17e0e7d2f2cfe35002962e9f26237c0bb # v1.0.263
+        # Limite de tours dépassée ou arrêt : le travail déjà fait n'est pas perdu, la validation décide
+        continue-on-error: true
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Jeton du job : lecture seule (permissions ci-dessus). Claude ne peut rien pousser.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Suis exactement les instructions du fichier ai/prompt-realisation.md.
+            Demande : _demande/demande.json. Action : ${{ env.ACTION }}.
+          # Écriture limitée par chemin : Edit(…) vaut aussi pour Write et MultiEdit. Les scripts du site (scripts/,
+          # src/, package.json…) restent ceux de main : les commandes npm permises n'exécutent que du code relu.
+          claude_args: |
+            --model ${{ vars.CLAUDE_MODELE || 'claude-sonnet-5' }}
+            --max-turns ${{ env.TOURS }}
+            --allowedTools "Read,Glob,Grep,LS,WebSearch,Edit(content/**),Edit(media/**),Edit(data/**),Edit(_demande/**),Bash(npm run validate:*),Bash(npm run import-media:*),Bash(npm run build:*),Bash(npm run maillage:*),Bash(git status:*),Bash(git diff:*)"
+            --disallowedTools "Edit(scripts/**),Edit(src/**),Edit(.github/**),Edit(ai/**),Edit(public/**),Edit(package.json),Edit(package-lock.json),Edit(astro.config.mjs),Edit(tsconfig.json),Edit(.claude/**),Read(.git/**)"
+
+      - name: Journal de la réalisation (7 jours, pour diagnostic)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journal-claude-${{ env.ID }}
+          path: ${{ runner.temp }}/claude-execution-output.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Garde-fous (zones autorisées)
+        # Ce qui sort des zones permises est annulé ici ; le job « publier » refuse tout correctif qui en contiendrait encore.
+        if: always()
+        run: |
+          # Zones permises : contenus, médias (images et PDF), quelques données ; le brief peut aussi ajouter une catégorie
+          PERMIS='^(content/.+|media/.+\.(jpe?g|png|webp|avif|gif|pdf)|data/(menu|footer|site|formulaires|temoignages)\.json)$'
+          [ "$(jq -r '.type // empty' _demande/demande.json 2>/dev/null)" = brief ] && PERMIS='^(content/.+|media/.+\.(jpe?g|png|webp|avif|gif|pdf)|data/(menu|footer|site|formulaires|temoignages|taxonomies)\.json)$'
+          git status --porcelain --untracked-files=all | cut -c4- | grep -v '^_demande/' > _demande/modifies.txt || true
+          INTERDITS=$(grep -viE "$PERMIS" _demande/modifies.txt || true)
+          if [ -n "$INTERDITS" ]; then
+            echo "::warning::Modifications hors zones autorisées annulées : $INTERDITS"
+            while IFS= read -r f; do git checkout -- "$f" 2>/dev/null || rm -f -- "$f"; done <<< "$INTERDITS"
+          fi
+
+      - name: Préparer le correctif
+        # Seuls content/, media/ et data/ entrent dans le correctif ; le job « publier » refiltre de toute façon.
+        if: always()
+        env:
+          JOURNAL: ${{ runner.temp }}/claude-execution-output.json
+          MODELE: ${{ vars.CLAUDE_MODELE || 'claude-sonnet-5' }}
+        run: |
+          mkdir -p _sortie
+          git add -A -- content media data 2>/dev/null || true
+          git diff --cached --binary > _sortie/proposition.patch
+          cp _demande/demande.json _sortie/ 2>/dev/null || true
+          [ -f _demande/rapport.json ] && cp _demande/rapport.json _sortie/
+          # Tokens consommés (dernier message « result » du journal), envoyés au site par le job « publier »
+          jq -c '[.[]? | select(.type == "result")] | last | .usage // {} | {entree:(.input_tokens // 0), sortie:(.output_tokens // 0), cache_ecriture:(.cache_creation_input_tokens // 0), cache_lecture:(.cache_read_input_tokens // 0)}' "$JOURNAL" > _sortie/tokens.json 2>/dev/null || echo '{}' > _sortie/tokens.json
+          printf '%s' "$MODELE" > _sortie/modele.txt
+          echo "Correctif : $(git diff --cached --name-only | wc -l) fichier(s)"
+
+      - name: Transmettre le correctif
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: proposition-${{ env.ID }}
+          path: _sortie/
+          retention-days: 3
+          if-no-files-found: ignore
+
+  publier:
+    needs: realiser
+    # Toujours, sauf si la demande n'a même pas été lancée : le site doit savoir que la réalisation a échoué
+    if: ${{ always() && github.repository != 'loopy117/socle-sites' && needs.realiser.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      NODE_OPTIONS: ${{ vars.NODE_OPTIONS || '--max-old-space-size=6144' }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      URL_PRODUCTION: ${{ vars.URL_PRODUCTION }}
+      BRANCHE: ${{ needs.realiser.outputs.branche }}
+      BASE: ${{ needs.realiser.outputs.base }}
+      DEBUT_MESURE: ${{ needs.realiser.outputs.debut }}
+    steps:
+      - name: Vérifier les données de la réalisation
+        run: |
+          [[ "$ID" =~ ^[0-9]{8}-[a-f0-9]{8}$ ]] || { echo "::error::Identifiant de demande invalide"; exit 1; }
+          [[ "$ACTION" =~ ^(realiser|completer|corriger)$ ]] || { echo "::error::Action inconnue"; exit 1; }
+          if [ -z "$BRANCHE" ] || [ -z "$BASE" ]; then echo "STATUT=echec" >> "$GITHUB_ENV"; echo "::error::Réalisation interrompue avant la préparation de la branche"; exit 0; fi
+          [[ "$BRANCHE" =~ ^ia/[A-Za-z0-9._/-]{1,200}$ ]] && [[ "$BRANCHE" != *..* ]] || { echo "::error::Branche refusée"; exit 1; }
+          [[ "$BASE" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Version de départ invalide"; exit 1; }
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        if: env.STATUT != 'echec'
+        with:
+          fetch-depth: 0
+
+      - name: Récupérer le correctif
+        if: env.STATUT != 'echec'
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: proposition-${{ env.ID }}
+          path: _sortie
+
+      - name: Appliquer le correctif (contenus seulement)
+        if: env.STATUT != 'echec'
+        run: |
+          mkdir -p _demande
+          [ -f _sortie/demande.json ] && cp _sortie/demande.json _demande/
+          [ -f _sortie/rapport.json ] && cp _sortie/rapport.json _demande/
+          if [ ! -f _sortie/proposition.patch ]; then echo "STATUT=echec" >> "$GITHUB_ENV"; echo "::error::Correctif absent"; exit 0; fi
+          # La version de départ doit être connue du dépôt (main ou la branche ia/ existante)
+          git merge-base --is-ancestor "$BASE" origin/main || git merge-base --is-ancestor "$BASE" "origin/$BRANCHE" 2>/dev/null \
+            || { echo "::error::Version de départ inconnue du dépôt"; exit 1; }
+          git config user.name "xmedia·ai"
+          git config user.email "xmedia-ai@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$BRANCHE" > /dev/null; then git checkout -q "$BRANCHE"; else git checkout -q -b "$BRANCHE" "$BASE"; fi
+          # Zones permises : contenus, médias (images et PDF), quelques données ; le brief peut aussi ajouter une catégorie
+          PERMIS='^(content/.+|media/.+\.(jpe?g|png|webp|avif|gif|pdf)|data/(menu|footer|site|formulaires|temoignages)\.json)$'
+          [ "$(jq -r '.type // empty' _demande/demande.json 2>/dev/null)" = brief ] && PERMIS='^(content/.+|media/.+\.(jpe?g|png|webp|avif|gif|pdf)|data/(menu|footer|site|formulaires|temoignages|taxonomies)\.json)$'
+          if [ -s _sortie/proposition.patch ]; then
+            git apply --numstat -z _sortie/proposition.patch | tr '\0' '\n' | awk -F'\t' 'NF>=3{print $3} NF<3 && $0!=""{print $0}' | sort -u > _demande/fichiers.txt
+            # Renommages : l'ancien et le nouveau nom doivent être permis tous les deux
+            git apply --summary _sortie/proposition.patch | sed -nE 's/^ rename (.*) \((.*)\)$/\1/p' >> _demande/fichiers.txt || true
+            INTERDITS=$(grep -viE "$PERMIS" _demande/fichiers.txt | grep -v '^$' || true)
+            if [ -n "$INTERDITS" ]; then
+              echo "::error::Correctif refusé : fichiers hors des zones permises : $(echo $INTERDITS | head -c 500)"
+              echo "STATUT=echec" >> "$GITHUB_ENV"; exit 0
+            fi
+            git apply --index --binary _sortie/proposition.patch || { echo "STATUT=echec" >> "$GITHUB_ENV"; echo "::error::Correctif inapplicable"; exit 0; }
+            # Seconde vérification, sur ce qui est réellement indexé
+            INTERDITS=$(git diff --cached --name-only | grep -viE "$PERMIS" || true)
+            [ -z "$INTERDITS" ] || { echo "::error::Fichiers hors zones après application : $INTERDITS"; exit 1; }
+          fi
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        if: env.STATUT != 'echec'
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.STATUT != 'echec'
+        run: npm ci
+
+      - name: Valider
+        # Code du site tel qu'il est sur la branche : celui de main, jamais modifié par la réalisation
+        if: env.STATUT != 'echec'
+        run: |
+          npm run --silent validate -- --json > _demande/validation.json || true
+          INTERROMPUE=0
+          if [ ! -f _demande/rapport.json ]; then
+            INTERROMPUE=1
+            echo '{"resume":"Réalisation interrompue avant la fin (limite de temps ou de tours) : la proposition est incomplète, à reprendre.","hypotheses":[],"questions":[],"pages":[]}' > _demande/rapport.json
+          fi
+          AUTRES=$(jq '[.erreurs[] | select(.message | test("marqueur à compléter") | not)] | length' _demande/validation.json)
+          QUESTIONS=$(jq '.questions | length' _demande/rapport.json)
+          if [ "$AUTRES" -gt 0 ] || [ "$INTERROMPUE" = 1 ] || [ "${{ needs.realiser.result }}" != success ]; then STATUT=echec
+          elif [ "$QUESTIONS" -gt 0 ]; then STATUT=attente_client
+          else STATUT=a_valider; fi
+          echo "STATUT=$STATUT" >> "$GITHUB_ENV"
+          echo "### Demande $ID → $STATUT" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.erreurs[] | "- \(.fichier) › \(.chemin) : \(.message)"' _demande/validation.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enregistrer et ouvrir la proposition
+        if: env.STATUT != 'echec' || hashFiles('_demande/rapport.json') != ''
+        run: |
+          [ -n "$BRANCHE" ] && git rev-parse --verify -q HEAD > /dev/null || exit 0
+          TITRE=$(jq -r '.titre // empty' _demande/rapport.json)
+          [ -n "$TITRE" ] || TITRE=$(jq -r '.recap.titre // "Demande"' _demande/demande.json)
+          if ! git diff --cached --quiet; then
+            git commit -q -m "xmedia·ai : $TITRE ($ID)" -m "$(jq -r '.resume' _demande/rapport.json)" -m "Demande client $ID, action $ACTION."
+            git push -q origin "$BRANCHE"
+          elif [ "$ACTION" = "realiser" ] && [ -z "$(git rev-list origin/main..HEAD)" ]; then
+            # Rien de nouveau ET rien sur la branche : échec. Travail déjà poussé (relance après incident) : on ouvre la proposition.
+            echo "STATUT=echec" >> "$GITHUB_ENV"; echo "::error::Aucune modification produite"; exit 0
+          fi
+          {
+            echo "**Demande client** \`$ID\` via xmedia·ai"; echo
+            echo "$(jq -r '.resume' _demande/rapport.json)"; echo
+            echo "**Récapitulatif validé par le client**"; echo; jq -r '.recap.consignes' _demande/demande.json; echo
+            echo "**Hypothèses**"; jq -r '.hypotheses[]? | "- " + .' _demande/rapport.json; echo
+            echo "**Questions en attente du client**"; jq -r '.questions[]? | "- " + .' _demande/rapport.json; echo
+            echo "**Pages**"; jq -r '.pages[]? | "- " + .' _demande/rapport.json; echo
+            if [ "$(jq '.suggestions_brief // [] | length' _demande/rapport.json)" -gt 0 ]; then
+              echo "**Pour faire évoluer le questionnaire « $(jq -r '.brief.metier.id // "socle"' _demande/demande.json) »** (xmedia-serveur, commun/briefs)"
+              jq -r '.suggestions_brief[] | "- " + .' _demande/rapport.json; echo
+            fi
+            echo "**Réponses du client**"; jq -r '.questions[]? | select(.reponse != "") | "- " + .texte + " → " + .reponse' _demande/demande.json
+          } > _demande/pr.md
+          PR=$(gh pr list --head "$BRANCHE" --state open --json number --jq '.[0].number')
+          if [ -z "$PR" ]; then
+            gh pr create --base main --head "$BRANCHE" --title "[xmedia·ai] $TITRE" --body-file _demande/pr.md $([ "$STATUT" != a_valider ] && echo --draft) || {
+              echo "::error::Proposition non créée : dans GitHub, Settings → Actions → General → Workflow permissions, cocher « Allow GitHub Actions to create and approve pull requests ». Le travail est sur la branche $BRANCHE."
+              exit 1; }
+            PR=$(gh pr list --head "$BRANCHE" --state open --json number --jq '.[0].number')
+          else
+            gh pr edit "$PR" --body-file _demande/pr.md
+            if [ "$STATUT" = a_valider ]; then gh pr ready "$PR"; fi
+          fi
+          echo "PR_NUMERO=$PR" >> "$GITHUB_ENV"
+          echo "PR_URL=$(gh pr view "$PR" --json url --jq .url)" >> "$GITHUB_ENV"
+          # Version exacte proposée au client : l'aperçu et la publication s'y rapportent (rien de non relu ne part en ligne)
+          echo "SHA_PROPOSITION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Préparer l'aperçu privé
+        # Un push fait avec GITHUB_TOKEN ne déclenche pas le déploiement : on le demande explicitement
+        if: env.STATUT == 'a_valider' && vars.DOSSIER_APERCU != ''
+        continue-on-error: true
+        run: gh api "repos/$GITHUB_REPOSITORY/dispatches" -f event_type=apercu -f "client_payload[branche]=$BRANCHE"
+
+      - name: Prévenir le site
+        if: always()
+        env:
+          SECRET: ${{ secrets.XMEDIA_AI_SECRET }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          [ "$JOB_STATUS" = success ] || STATUT=echec
+          mkdir -p _demande; [ -f _demande/rapport.json ] || echo '{}' > _demande/rapport.json
+          CORPS=$(jq -cn --arg id "$ID" --arg statut "${STATUT:-echec}" --arg branche "$BRANCHE" --arg url "${PR_URL:-}" --arg num "${PR_NUMERO:-}" \
+            --arg note "run ${{ github.run_id }}" --slurpfile r _demande/rapport.json \
+            --arg sha "${SHA_PROPOSITION:-}" --arg apercu "${{ vars.DOSSIER_APERCU != '' }}" --argjson ts "$(date +%s)" \
+            '{type:"statut", id:$id, statut:$statut, branche:$branche, pr_url:(if $url == "" then null else $url end), pr_numero:(if $num == "" then null else ($num|tonumber) end), note:$note, sha:(if $sha == "" then null else $sha end), apercu:($apercu == "true"), ts:$ts,
+              rapport:{resume:($r[0].resume // ""), hypotheses:($r[0].hypotheses // []), pages:($r[0].pages // [])}, questions:($r[0].questions // [])}')
+          SIG=$(printf '%s' "$CORPS" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
+          curl -sS --fail -L --post301 --post302 -X POST "${URL_PRODUCTION%/}/xmedia-ai/webhook.php" -H 'Content-Type: application/json' -H "X-Xmedia-Signature: sha256=$SIG" -d "$CORPS"
+
+      - name: Mesure (empreinte des sites clients)
+        # Durée de la réalisation et tokens consommés par Claude, envoyés au site.
+        # L'agent du serveur en tire chaque nuit l'empreinte publiée. Jamais bloquant.
+        if: always()
+        continue-on-error: true
+        env:
+          SECRET: ${{ secrets.XMEDIA_AI_SECRET }}
+          EVENEMENT: ${{ github.event_name }}
+        run: |
+          [ -n "$SECRET" ] && [ -n "$URL_PRODUCTION" ] || exit 0
+          TOKENS=$(jq -c '{entree:(.entree // 0 | tonumber), sortie:(.sortie // 0 | tonumber), cache_ecriture:(.cache_ecriture // 0 | tonumber), cache_lecture:(.cache_lecture // 0 | tonumber)}' _sortie/tokens.json 2>/dev/null || echo '{}')
+          [ -n "$TOKENS" ] || TOKENS='{}'
+          MODELE=$(tr -cd 'A-Za-z0-9._-' < _sortie/modele.txt 2>/dev/null | head -c 60); [ -n "$MODELE" ] || MODELE='claude-sonnet-5'
+          [[ "$DEBUT_MESURE" =~ ^[0-9]+$ ]] || DEBUT_MESURE=$(date +%s)
+          # Origine : demande envoyée depuis l'espace client (xmedia-ai) ; relance à la main par l'agence (agence, non publiée)
+          ORIGINE=$([ "$EVENEMENT" = repository_dispatch ] && echo xmedia-ai || echo agence)
+          CORPS=$(jq -cn --argjson d "$(( $(date +%s) - DEBUT_MESURE ))" --arg run "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --argjson ts "$(date +%s)" --argjson t "$TOKENS" --arg m "$MODELE" --arg o "$ORIGINE" \
+            '{type:"mesure", nature:"demande", origine:$o, duree_s:$d, run:$run, ts:$ts, tokens:$t, modele:$m}')
+          SIG=$(printf '%s' "$CORPS" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
+          curl -sS -L --post301 --post302 -X POST "${URL_PRODUCTION%/}/xmedia-ai/webhook.php" -H 'Content-Type: application/json' -H "X-Xmedia-Signature: sha256=$SIG" -d "$CORPS" || true

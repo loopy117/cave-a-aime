@@ -1,0 +1,43 @@
+titre: Fromages et plateaux
+statut: publie
+seo:
+  titre: "Fromages et plateaux à partager · La Cave à Aimé"
+  description: "Fromages achetés en direct aux producteurs et aux artisans fromagers, plateaux apéro avec le vin de votre choix, charcuterie du Luberon : à la Cave à Aimé."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: Fromages
+    titre: "Le fromage, notre deuxième passion après le vin"
+    texte: "Brie truffé, petit chèvre du Luberon, Banon, Saint-Marcellin, tomme aux orties, Brillat-Savarin…"
+    ctas:
+      - label: "Commander un plateau"
+        href: /contact
+        style: primaire
+  - block: texte
+    variant: etroit
+    titre: Des fromages choisis chez les producteurs
+    contenu: |
+      Nos fromages sont achetés en direct aux producteurs ou auprès d'artisans fromagers. Le fromage a quelque chose de magique : une grande diversité, des saveurs uniques, et il n'y a pas d'heure pour en manger. À la Cave à Aimé, on l'aime pour toutes les occasions.
+  - block: features
+    variant: grille-icones
+    background: alt
+    surtitre: Plateaux
+    titre: Pour toutes les occasions
+    items:
+      - icone: etoile
+        titre: Invité à dîner ?
+        texte: "Soyez original : apportez un plateau de fromages."
+      - icone: check
+        titre: Un apéro à partager
+        texte: "La formule plateau de fromages, accompagné du vin de la couleur de votre choix."
+      - icone: plus
+        titre: Fromage et charcuterie
+        texte: "Mélangez vos plateaux avec la charcuterie du Luberon et ses spécialités artisanales."
+  - block: cta
+    variant: carte
+    titre: "Votre plateau, prêt à votre passage"
+    texte: "Toute l'année, l'équipe vous prépare vos plateaux. Dites-nous pour combien de personnes et dans quelle cave."
+    ctas:
+      - label: Commander
+        href: /contact
+        style: primaire

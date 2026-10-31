@@ -1,0 +1,12 @@
+titre: Accessibilité
+statut: publie
+seo:
+  titre: "Déclaration d'accessibilité · La Cave à Aimé"
+  description: "Déclaration d'accessibilité du site de La Cave à Aimé : état de conformité au RGAA, contenus non accessibles, contact et voies de recours."
+  noindex: true
+sections:
+  - block: hero
+    variant: minimal
+    titre: Déclaration d'accessibilité
+  - block: legal
+    variant: accessibilite

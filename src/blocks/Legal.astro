@@ -1,0 +1,40 @@
+---
+/**
+ * Mentions légales, politique de confidentialité, déclarations d'accessibilité et d'écoconception, générées
+ * depuis data/site.json (lib/legal.ts) et, pour l'écoconception, data/ecoconception.json (lib/ecoconception.ts).
+ */
+import { readFileSync } from 'node:fs';
+import Section from '../components/Section.astro';
+import Markdown from '../components/Markdown.astro';
+import siteBrut from '../../data/site.json';
+import type { Site } from '../schemas/site';
+import { indexSite } from '../lib/site';
+import { mentionsLegales, politiqueConfidentialite, declarationAccessibilite } from '../lib/legal';
+import { declarationEcoconception, SEUILS } from '../lib/ecoconception';
+const site = siteBrut as unknown as Site;
+const { variant = 'mentions', background, spacing, id, surtitre, titre, intro, complement } = Astro.props;
+const confidentialite = (await indexSite()).get('/confidentialite')?.publie ? '/confidentialite' : null;
+// Polices chargées depuis Google Fonts : à signaler tant que le site ne les héberge pas lui-même
+const googleFonts = readFileSync('src/layouts/Base.astro', 'utf8').includes('fonts.googleapis.com')
+  ? "Les polices de caractères du site sont fournies par Google Fonts : pour les afficher, votre navigateur se connecte aux serveurs de Google, qui reçoivent votre adresse IP."
+  : null;
+const fin = complement ? `\n\n${complement}` : '';
+const eco = variant === 'ecoconception' ? declarationEcoconception((site as any).nom ?? site.legal?.raison_sociale ?? '', new URL(site.url).host) : null;
+const source = eco ? '' : (variant === 'confidentialite' ? politiqueConfidentialite(site, googleFonts) : variant === 'accessibilite' ? declarationAccessibilite(site, '/plan-du-site') : mentionsLegales(site, confidentialite)) + fin;
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro} largeur="etroite">
+  {eco ? (
+    <>
+      <Markdown source={eco.avant} lier={false} />
+      {/* Rempli à la mise en ligne par scripts/ecoindex.mjs (mesure de toutes les pages) ; masqué sinon */}
+      <div class="eco-mesures prose" data-ecoconception-mesures data-poids-max={SEUILS.poids_ko} data-requetes-max={SEUILS.requetes} data-note-min={SEUILS.note} hidden></div>
+      <Markdown source={eco.apres + fin} lier={false} />
+    </>
+  ) : <Markdown source={source} lier={false} />}
+</Section>
+
+<style>
+  .eco-mesures { margin: 1em 0; padding: 16px 20px; border-radius: var(--radius, 12px); background: var(--c-surface-alt, rgb(0 0 0 / .04)); }
+  .eco-mesures :global(p) { margin: 0 0 .5em; }
+  .eco-mesures :global(p:last-child) { margin-bottom: 0; }
+</style>

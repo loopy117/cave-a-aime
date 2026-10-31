@@ -1,0 +1,7 @@
+---
+import icones from '../../data/icones.json';
+interface Props { nom: string; taille?: number; class?: string }
+const { nom, taille = 24, class: classe } = Astro.props;
+const d = (icones as Record<string, string>)[nom];
+---
+<svg class={classe} width={taille} height={taille} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d} /></svg>

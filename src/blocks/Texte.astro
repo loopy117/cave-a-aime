@@ -1,0 +1,13 @@
+---
+import Section from '../components/Section.astro';
+import Markdown from '../components/Markdown.astro';
+const { variant = 'etroit', background, spacing, id, surtitre, titre, intro, contenu } = Astro.props;
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro} largeur={variant === 'etroit' ? 'etroite' : 'normale'}>
+  <Markdown source={contenu} class={`texte--${variant}`} />
+</Section>
+<style>
+  :global(.texte--deux-colonnes) { display: block; columns: 2 320px; column-gap: 44px; }
+  :global(.texte--deux-colonnes > *) { break-inside: avoid; margin-bottom: 14px; }
+  :global(.texte--standard) { max-width: 900px; }
+</style>

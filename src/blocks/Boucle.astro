@@ -1,0 +1,20 @@
+---
+/** Bloc boucle : requête sur une collection + carte + disposition (spec §7). */
+import Section from '../components/Section.astro';
+import Disposition from '../dispositions/Disposition.astro';
+import { elements as charger } from '../lib/contenu';
+import { executer, type Element } from '../lib/requete';
+
+const b = Astro.props;
+const courant: Element | undefined = b.courant;
+const resultats = executer(await charger(b.source), b, { courant });
+const vide = resultats.length === 0;
+---
+{!(vide && (b.si_vide ?? 'masquer') === 'masquer') && (
+  <Section background={b.background} spacing={b.spacing} id={b.id} surtitre={b.surtitre} titre={b.titre} intro={b.intro} lien={b.lien_tout_voir}>
+    {vide ? <p class="boucle__vide">{b.message_vide}</p> : <Disposition elements={resultats} carte={b.carte} affichage={b.affichage} options={b.options} />}
+  </Section>
+)}
+<style>
+  .boucle__vide { color: var(--c-text-muted); }
+</style>

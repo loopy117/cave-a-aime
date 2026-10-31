@@ -1,0 +1,26 @@
+---
+import Section from '../components/Section.astro';
+const { variant = 'ligne', background, spacing, id, surtitre, titre, intro, items = [] } = Astro.props;
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <dl class:list={['ch', `ch--${variant}`]}>
+    {items.map((it: any) => (
+      <div class="ch__item">
+        <dt class="ch__libelle">{it.libelle}</dt>
+        <dd class="ch__valeur">{it.valeur}</dd>
+        {it.source && <dd class="ch__source">{it.source}</dd>}
+      </div>
+    ))}
+  </dl>
+</Section>
+<style>
+  .ch { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 20px; }
+  .ch__item { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 6px; }
+  .ch--cartes .ch__item { border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 22px; }
+  .ch--ligne .ch__item { border-left: 3px solid var(--c-accent); padding-left: 16px; }
+  .ch__valeur { margin: 0; font-size: clamp(32px, 4vw, 44px); font-weight: 700; letter-spacing: -0.02em; color: var(--c-text); line-height: 1; }
+  .ch__libelle { font-size: 15px; color: var(--c-text-muted); }
+  .ch__source { margin: 0; order: -1; font-size: 12px; color: var(--c-eyebrow); }
+  :global(.on-dark) .ch__valeur { color: #fff; }
+  :global(.on-dark) .ch__libelle { color: var(--c-on-dark-body); }
+</style>
