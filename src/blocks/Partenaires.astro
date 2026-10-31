@@ -1,0 +1,123 @@
+---
+/**
+ * Partenaires et sponsors, alimentés par data/partenaires.json (un seul endroit, modifiable dans Decap).
+ * grille : un niveau par ligne (principal en grande carte, officiel en logos moyens, soutien en petits logos).
+ * bandeau : une rangée de logos, discrète (fin de page).
+ * Les logos sont posés sur des cases blanches pour garder les couleurs des marques, quel que soit le fond.
+ * Liens marqués rel="sponsored" : c'est ce que Google demande pour un lien de partenariat.
+ */
+import Section from '../components/Section.astro';
+import Img from '../components/Img.astro';
+import { partenaires as schema, NIVEAUX_PARTENAIRES, LIBELLES_PARTENAIRES, type NiveauPartenaire, type Partenaire } from '../schemas/partenaires';
+
+const { variant = 'grille', background, spacing, id, surtitre, titre, intro, niveaux, devenir: voirDevenir = true } = Astro.props;
+const fichiers = import.meta.glob('../../data/partenaires.json', { eager: true, import: 'default' });
+const brut = Object.values(fichiers)[0];
+if (!brut) throw new Error('bloc partenaires : data/partenaires.json absent');
+const d = schema.parse(brut);
+const ordre: NiveauPartenaire[] = niveaux ?? [...NIVEAUX_PARTENAIRES];
+const groupes = ordre
+  .map((n) => ({ niveau: n, libelle: d.libelles?.[n] ?? LIBELLES_PARTENAIRES[n], liste: d.liste.filter((p) => p.actif && p.niveau === n) }))
+  .filter((g) => g.liste.length);
+const tous = groupes.flatMap((g) => g.liste);
+const devenir = voirDevenir ? d.devenir : undefined;
+const dernier = groupes.at(-1)?.niveau;
+const tailles: Record<NiveauPartenaire, number[]> = { principal: [320, 640], officiel: [240, 480], soutien: [160, 320] };
+const rel = 'sponsored noopener';
+---
+{tous.length > 0 && (
+  <Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+    {variant === 'bandeau' ? (
+      <ul class="pt-bandeau" role="list">
+        {tous.map((p: Partenaire) => (
+          <li>
+            {p.url
+              ? <a class="pt-case pt-case--bandeau" href={p.url} rel={rel}>{p.logo ? <Img image={{ src: p.logo, alt: p.nom }} sizes="160px" largeurs={tailles.soutien} /> : <span class="pt-nom">{p.nom}</span>}</a>
+              : <span class="pt-case pt-case--bandeau">{p.logo ? <Img image={{ src: p.logo, alt: p.nom }} sizes="160px" largeurs={tailles.soutien} /> : <span class="pt-nom">{p.nom}</span>}</span>}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div class="pt">
+        {groupes.map((g) => (
+          <div class:list={['pt-groupe', `pt-groupe--${g.niveau}`]}>
+            {g.niveau !== 'principal' && <h3 class="pt-niveau">{g.libelle}</h3>}
+            <ul class:list={['pt-liste', `pt-liste--${g.niveau}`]} role="list">
+              {g.liste.map((p: Partenaire) => {
+                const Balise = p.url ? 'a' : 'div';
+                const lien = p.url ? { href: p.url, rel } : {};
+                return g.niveau === 'principal' ? (
+                  <li>
+                    <Balise class="pt-principal" {...lien}>
+                      <span class="pt-badge">{g.libelle}</span>
+                      <span class="pt-principal__corps">
+                        <span class="pt-case pt-case--principal">{p.logo ? <Img image={{ src: p.logo, alt: p.nom }} sizes="240px" largeurs={tailles.principal} /> : <span class="pt-nom">{p.nom}</span>}</span>
+                        <span class="pt-principal__textes">
+                          <span class="pt-principal__nom">{p.nom}</span>
+                          {p.texte && <span class="pt-principal__texte">{p.texte}</span>}
+                        </span>
+                      </span>
+                    </Balise>
+                  </li>
+                ) : (
+                  <li>
+                    <Balise class:list={['pt-case', `pt-case--${g.niveau}`]} {...lien}>
+                      {p.logo ? <Img image={{ src: p.logo, alt: p.nom }} sizes={g.niveau === 'officiel' ? '240px' : '160px'} largeurs={tailles[g.niveau]} /> : <span class="pt-nom">{p.nom}</span>}
+                    </Balise>
+                  </li>
+                );
+              })}
+              {devenir && g.niveau === dernier && g.niveau !== 'principal' && (
+                <li><a class:list={['pt-case', `pt-case--${g.niveau}`, 'pt-devenir']} href={devenir.href}>{devenir.label}</a></li>
+              )}
+            </ul>
+          </div>
+        ))}
+        {devenir && dernier === 'principal' && <p><a class="pt-devenir pt-devenir--seul" href={devenir.href}>{devenir.label}</a></p>}
+      </div>
+    )}
+  </Section>
+)}
+<style>
+  .pt { display: flex; flex-direction: column; gap: 36px; }
+  .pt-niveau { margin: 0 0 14px; font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 700; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--c-eyebrow); }
+  :global(.on-dark) .pt-niveau { color: var(--c-peche); }
+  .pt-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .pt-liste--principal { grid-template-columns: 1fr; gap: 18px; }
+  .pt-liste--officiel { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); }
+  .pt-liste--soutien { grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr)); gap: 12px; }
+
+  /* Case logo : fond blanc pour respecter les couleurs des marques, bordure visible sur fond clair */
+  .pt-case { display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 14px 18px; box-sizing: border-box; color: var(--c-text-strong); text-decoration: none; transition: transform .15s ease, box-shadow .15s ease; }
+  .pt-case :global(picture) { display: contents; }
+  .pt-case :global(img) { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+  a.pt-case:hover, a.pt-case:focus-visible { transform: translateY(-2px); box-shadow: 0 8px 22px rgb(0 0 0 / 0.14); }
+  .pt-case--officiel { height: 112px; }
+  .pt-case--soutien { height: 80px; padding: 10px 14px; }
+  .pt-case--bandeau { height: 64px; width: 150px; padding: 8px 12px; }
+  .pt-case--principal { width: 260px; height: 150px; flex: none; }
+  .pt-nom { font-family: var(--font-title); font-weight: var(--fw-title); text-transform: var(--title-transform, none); font-size: 19px; line-height: 1.1; text-align: center; }
+  .pt-case--soutien .pt-nom, .pt-case--bandeau .pt-nom { font-size: 16px; }
+
+  /* Carte du partenaire principal */
+  .pt-principal { display: flex; flex-direction: column; gap: 14px; padding: 26px; border-radius: var(--radius-lg); border: 2px solid var(--c-accent); background: var(--c-surface); color: var(--c-text-strong); text-decoration: none; }
+  :global(.on-dark) .pt-principal { background: rgb(255 255 255 / 0.04); color: var(--c-on-dark); }
+  a.pt-principal:hover .pt-principal__nom, a.pt-principal:focus-visible .pt-principal__nom { text-decoration: underline; text-underline-offset: 4px; }
+  .pt-badge { align-self: flex-start; background: var(--c-accent); color: var(--c-accent-ink); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; }
+  .pt-principal__corps { display: flex; flex-wrap: wrap; align-items: center; gap: 26px; }
+  .pt-principal__textes { display: flex; flex-direction: column; gap: 6px; flex: 1 1 260px; }
+  .pt-principal__nom { font-family: var(--font-title); font-weight: var(--fw-title); text-transform: var(--title-transform, none); font-size: clamp(26px, 3vw, 34px); line-height: 1.05; }
+  .pt-principal__texte { color: var(--c-text-muted); line-height: 1.5; }
+  :global(.on-dark) .pt-principal__texte { color: var(--c-on-dark-muted); }
+
+  /* Devenir partenaire : case en pointillés */
+  .pt-devenir { background: transparent; border: 2px dashed var(--c-border-dark); color: var(--c-link); font-weight: 700; text-align: center; }
+  :global(.on-dark) .pt-devenir { color: var(--c-accent); border-color: var(--c-on-dark-line); }
+  .pt-devenir:hover { color: var(--c-link-hover); }
+  :global(.on-dark) .pt-devenir:hover { color: var(--c-on-dark); }
+  .pt-devenir--seul { display: inline-block; padding: 12px 18px; border-radius: var(--radius-md); }
+
+  .pt-bandeau { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+  @media (prefers-reduced-motion: reduce) { .pt-case { transition: none; } a.pt-case:hover { transform: none; } }
+</style>

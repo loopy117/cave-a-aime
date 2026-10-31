@@ -1,0 +1,37 @@
+---
+/**
+ * Étiquette EcoIndex de la page, dans le pied de page : feuille · « EcoIndex » · lettre dans sa couleur officielle ·
+ * « Plus sobre que 83 % des pages web ». Lien vers ecoindex.fr (note sur 100 et méthode dans le title).
+ * Construite masquée ; scripts/ecoindex.mjs mesure chaque page au déploiement (méthode EcoIndex : éléments de la page,
+ * requêtes, poids transféré), puis remplit et affiche l'étiquette si la note vaut A ou B, ou la retire sinon.
+ * Aucune requête vers ecoindex.fr : tout est écrit dans la page. Désactivable par site : data/site.json › ecoindex: false.
+ * Le contenu provisoire a exactement les éléments de l'étiquette finale (p, a, svg, span, b, span, span) : seuls les
+ * textes et attributs changent, la mesure n'est donc pas faussée. L'intérieur du SVG n'est pas compté par EcoIndex.
+ */
+import siteBrut from '../../data/site.json';
+const actif = (siteBrut as { ecoindex?: boolean }).ecoindex !== false;
+---
+{actif && (
+  <p class="ecoindex" data-ecoindex hidden><a class="ecoindex__lien" href="https://www.ecoindex.fr/" target="_blank" rel="noopener" title="Note EcoIndex"><svg class="ecoindex__feuille" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.5 3.5C11 3.5 5 8.3 5 15.2c0 1.6.4 3 1.1 4.1C8.6 13.6 12.4 10.4 17 8.6c-4 2.5-7 6.1-8.6 11 1.2.6 2.5.9 3.9.9 6.6 0 9.7-6.2 8.2-17Z"/></svg><span class="ecoindex__nom">EcoIndex</span><b class="ecoindex__lettre" data-lettre>?</b><span class="ecoindex__detail" data-detail>?</span><span class="visually-hidden"> (nouvel onglet)</span></a></p>
+)}
+<style>
+  .ecoindex { margin: 0; --eco: #51B84B; }
+  .ecoindex[data-ecoindex="A"] { --eco: #349A47; }
+  .ecoindex__lien {
+    display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+    padding: 5px 14px 5px 10px; border: 1px solid var(--c-on-dark-line, rgb(255 255 255 / 0.3)); border-radius: 20px;
+    background: rgb(255 255 255 / 0.06); color: var(--c-on-dark-muted, #C9DCE3); font-size: 13px; line-height: 1.3; text-decoration: none;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  .ecoindex__lien:hover { background: rgb(255 255 255 / 0.12); border-color: var(--eco); }
+  .ecoindex__lien:focus-visible { outline: 2px solid var(--c-on-dark, #fff); outline-offset: 3px; }
+  .ecoindex__feuille { width: 18px; height: 18px; flex: none; color: var(--eco); }
+  .ecoindex__nom { font-weight: 600; letter-spacing: 0.01em; color: var(--c-on-dark, #fff); }
+  .ecoindex__lettre {
+    display: inline-grid; place-items: center; width: 26px; height: 26px; margin-left: -4px; border-radius: 50%;
+    background: var(--eco); color: #0B2310; font-size: 14px; font-weight: 800; line-height: 1;
+  }
+  .ecoindex__detail { white-space: normal; }
+  @media (prefers-reduced-motion: reduce) { .ecoindex__lien { transition: none; } }
+  @media print { .ecoindex { display: none; } }
+</style>

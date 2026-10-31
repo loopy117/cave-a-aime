@@ -1,0 +1,26 @@
+---
+/** Agence une liste de cartes : grid, slider, liste, masonry, flux (spec §3). */
+import { composantsCartes } from '../cards';
+interface Props { elements: any[]; carte: string; affichage: string; options?: Record<string, any> }
+const { elements, carte, affichage, options = {} } = Astro.props;
+const Carte = (composantsCartes as any)[carte];
+const colonnes = options.colonnes ?? 3;
+const visibles = options.visibles ?? 3;
+const Balise = affichage === 'flux' ? 'div' : 'ul';
+---
+<Balise class:list={['dp', `dp--${affichage}`, options.separateurs === false && 'dp--sans-sep']} style={`--cols:${colonnes};--visibles:${visibles}`} tabindex={affichage === 'slider' ? 0 : undefined}>
+  {elements.map((e) => affichage === 'flux' ? <Carte element={e} /> : <li class="dp__item"><Carte element={e} /></li>)}
+</Balise>
+<style>
+  .dp { list-style: none; margin: 0; padding: 0; }
+  .dp--grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(max(260px, calc((100% - (var(--cols) - 1) * 20px) / var(--cols))), 100%), 1fr)); }
+  .dp--slider { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - (var(--visibles) - 1) * 20px) / var(--visibles)); gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 10px; }
+  .dp--slider .dp__item { scroll-snap-align: start; }
+  @media (max-width: 760px) { .dp--slider { grid-auto-columns: 85%; } }
+  .dp--liste { display: flex; flex-direction: column; }
+  .dp--liste .dp__item { padding-block: 16px; border-bottom: 1px solid var(--c-border); }
+  .dp--liste.dp--sans-sep .dp__item { border: 0; }
+  .dp--masonry { columns: var(--cols) 260px; column-gap: 20px; }
+  .dp--masonry .dp__item { break-inside: avoid; margin-bottom: 20px; }
+  .dp--flux { display: flex; flex-wrap: wrap; gap: 10px; }
+</style>

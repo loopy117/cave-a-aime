@@ -1,0 +1,67 @@
+---
+/**
+ * Labels, qualifications et assurances (data/labels.json). Les labels expirés ne sont jamais affichés.
+ * cartes : une carte par label (logo ou icône, organisme, numéro, validité, attestation, vérification) ;
+ * bandeau : une ligne compacte (accueil, pied de page de section).
+ */
+import Section from '../components/Section.astro';
+import Img from '../components/Img.astro';
+import Icone from '../components/Icone.astro';
+import donnees from '../../data/labels.json';
+import { labelsValides, TYPES_LABELS, type LabelEntreprise } from '../schemas/labels';
+const { variant = 'cartes', background, spacing, id, surtitre, titre, intro, elements } = Astro.props;
+const tous = labelsValides((donnees as any).labels ?? []) as LabelEntreprise[];
+const liste = elements?.length ? elements.map((e: string) => tous.find((l) => l.id === e)).filter(Boolean) as LabelEntreprise[] : tous;
+const date = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+{liste.length > 0 && (
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <ul class:list={['lb', `lb--${variant}`]}>
+    {liste.map((l) => (
+      <li class="lb__item">
+        <div class="lb__visuel">{l.logo ? (variant === 'logos' ? <Img image={l.logo} sizes="240px" largeurs={[240, 480]} /> : <Img image={l.logo} sizes="96px" largeurs={[192]} />) : <Icone nom={l.icone ?? 'bouclier'} taille={variant === 'bandeau' ? 22 : 28} />}</div>
+        <div class="lb__texte">
+          <p class="lb__nom">{l.nom}</p>
+          {variant !== 'bandeau' && <p class="lb__meta">{[TYPES_LABELS[l.type as keyof typeof TYPES_LABELS], l.organisme].filter(Boolean).join(' · ')}</p>}
+          {variant !== 'bandeau' && l.texte && <p class="lb__desc">{l.texte}</p>}
+          {variant !== 'bandeau' && (l.numero || (l.fin && l.afficher_fin !== false)) && (
+            <p class="lb__validite">{l.numero && <span>N° {l.numero}</span>}{l.fin && l.afficher_fin !== false && <span>Valable jusqu'au <time datetime={l.fin}>{date(l.fin)}</time></span>}</p>
+          )}
+          {variant !== 'bandeau' && (l.document || l.verification) && (
+            <p class="lb__liens">
+              {l.document && <a href={l.document} download>Attestation<span class="visually-hidden"> {l.nom}</span> (PDF)</a>}
+              {l.verification && <a href={l.verification} target="_blank" rel="noopener">Vérifier<span class="visually-hidden"> {l.nom}</span> auprès de l'organisme<span class="visually-hidden"> (nouvel onglet)</span></a>}
+            </p>
+          )}
+        </div>
+      </li>
+    ))}
+  </ul>
+</Section>
+)}
+<style>
+  .lb { list-style: none; margin: 0; padding: 0; }
+  .lb--cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px; }
+  .lb--cartes .lb__item { display: flex; gap: 16px; align-items: flex-start; border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 20px; background: var(--c-surface); }
+  .lb--bandeau { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; }
+  /* logos : le logo officiel en grand, puis le nom et la phrase */
+  .lb--logos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 20px; }
+  .lb--logos .lb__item { display: flex; flex-direction: column; gap: 18px; border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 28px; background: var(--c-surface); }
+  .lb--logos .lb__visuel { justify-items: start; height: 110px; }
+  .lb--logos .lb__visuel :global(img) { width: auto; max-width: 240px; height: auto; max-height: 110px; }
+  .lb--bandeau .lb__item { display: flex; gap: 10px; align-items: center; }
+  .lb__visuel { flex: none; display: grid; place-items: center; color: var(--c-primary); }
+  .lb--cartes .lb__visuel { width: 56px; min-height: 56px; border-radius: var(--radius-lg); background: var(--c-surface-alt); }
+  .lb__visuel :global(img) { width: 56px; height: auto; max-height: 56px; object-fit: contain; }
+  .lb--bandeau .lb__visuel :global(img) { width: 40px; max-height: 40px; }
+  .lb__texte { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .lb__nom { margin: 0; font-weight: 700; color: var(--c-text-strong); font-size: var(--fs-md); }
+  .lb--bandeau .lb__nom { font-size: var(--fs-base); }
+  .lb__meta { margin: 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
+  .lb__desc { margin: 0; font-size: var(--fs-base); color: var(--c-text-body); }
+  .lb__validite { margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-sm); color: var(--c-text-muted); }
+  .lb__liens { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: var(--fs-sm); font-weight: 600; }
+  .lb__liens a { color: var(--c-link); text-decoration: underline; text-underline-offset: 3px; }
+  :global(.on-dark) .lb__nom { color: #fff; }
+  :global(.on-dark) .lb--bandeau .lb__visuel { color: var(--c-accent); }
+</style>

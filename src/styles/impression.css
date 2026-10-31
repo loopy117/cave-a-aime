@@ -1,0 +1,37 @@
+/* ==========================================================================
+   Impression (bonne pratique d'écoconception RWEB_0031)
+   Seul le contenu de la page s'imprime : ni en-tête, ni menu, ni pied de page, ni décors, boutons ou formulaires.
+   Fonds blancs et texte noir pour économiser l'encre ; l'adresse des liens externes est écrite après le lien.
+   Pour exclure un élément précis : attribut data-imprimer="non".
+   ========================================================================== */
+@media print {
+  @page { margin: 15mm 14mm; }
+  html { print-color-adjust: economy; -webkit-print-color-adjust: economy; }
+  html, body { background: #fff !important; color: #000 !important; font-size: 11pt; line-height: 1.45; }
+
+  /* Habillage et éléments interactifs */
+  body > header, .header, .footer, .ariane, .lien-evitement, .xm-modif, svg.sillage,
+  form, .btn, iframe, video, audio, dialog, [data-imprimer="non"] { display: none !important; }
+
+  /* Fonds de section et fonds sombres : blanc, texte noir, sans ombre */
+  main, main section, main .section, main [class*="bg-"], main .on-dark {
+    background: #fff !important; box-shadow: none !important; padding-block: 0 !important;
+  }
+  main section { margin-block: 0 9mm !important; }
+  main *:not(img):not(svg):not(svg *) { color: #000 !important; text-shadow: none !important; }
+  main *:not(img) { box-shadow: none !important; }
+  .container, .container--narrow { max-width: none !important; padding-inline: 0 !important; }
+
+  /* Titres collés à leur texte, illustrations et listes non coupées */
+  h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+  img, figure, blockquote, table, tr, li, dl > div { break-inside: avoid; page-break-inside: avoid; }
+  img { max-width: 100% !important; height: auto !important; }
+
+  /* Questions fréquentes : réponses imprimées même repliées */
+  details::details-content { content-visibility: visible; display: block; }
+  details > summary { list-style: none; font-weight: 700; }
+
+  /* Liens externes : adresse écrite après le lien */
+  main a[href^="http"]:not(.btn)::after { content: " (" attr(href) ")"; font-size: 9pt; font-weight: 400; word-break: break-all; }
+  main a { text-decoration: underline; }
+}

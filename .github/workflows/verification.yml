@@ -1,0 +1,36 @@
+# Vérifie chaque proposition de modification (Decap, espace client, développement)
+# avant qu'elle soit fusionnée : validation du contenu, construction complète, maillage.
+name: Vérification
+
+on:
+  pull_request:
+    branches: [main]
+
+# Lecture seule : la vérification ne fait que construire et contrôler
+permissions:
+  contents: read
+
+jobs:
+  verifier:
+    # Ces workflows servent aux sites ; dans le dépôt du socle lui-même (sans contenus) ils ne tournent pas
+    if: ${{ github.repository != 'loopy117/socle-sites' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validation du contenu
+        run: |
+          npm run --silent validate -- --json > validation.json || true
+          jq -r '"### \(if .ok then "✔ Contenu valide" else "✖ Contenu invalide" end)", (.erreurs[] | "- \(.fichier) › \(.chemin) : \(.message)"), (.avertissements[] | "- ⚠ \(.fichier) › \(.chemin) : \(.message)")' validation.json >> "$GITHUB_STEP_SUMMARY"
+          jq -e '.ok' validation.json > /dev/null
+      - name: Construction du site
+        run: npx astro build
+      - name: Maillage interne
+        run: |
+          npm run --silent test
+          npx tsx scripts/maillage.ts | tee maillage.txt
+          { echo "### Maillage interne"; sed 's/^/    /' maillage.txt; } >> "$GITHUB_STEP_SUMMARY"

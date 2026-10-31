@@ -1,0 +1,185 @@
+---
+import Img from '../components/Img.astro';
+import Boutons from '../components/Boutons.astro';
+import Sillage from '../components/Sillage.astro';
+import Diaporama from '../components/Diaporama.astro';
+import Etoiles from '../components/Etoiles.astro';
+import { ficheGoogle, noteFr } from '../lib/avisGoogle';
+import { composantsIllustrations } from '../illustrations';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+const { variant = 'plein-ecran', background = 'clair', spacing, id, surtitre, titre, texte, image, illustration, diaporama, scene, ctas = [], points = [], note_google = false } = Astro.props;
+// Variante scene : dimensions lues dans le viewBox du SVG (évite le décalage de mise en page au chargement)
+let dimScene = { l: 0, h: 0 };
+if (variant === 'scene' && scene) {
+  const svg = readFileSync(join(process.cwd(), 'public', scene.svg), 'utf8');
+  const vb = svg.match(/viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/);
+  if (!vb) throw new Error(`hero scene : viewBox introuvable dans public${scene.svg}`);
+  dimScene = { l: Math.round(+vb[1]), h: Math.round(+vb[2]) };
+}
+const fiche = note_google ? ficheGoogle() : null;
+const Illustration = illustration ? composantsIllustrations[illustration.nom as keyof typeof composantsIllustrations] : null;
+const photo = variant === 'plein-ecran' || variant === 'affiche';
+const sombre = photo || background === 'sombre' || background === 'accent' || background === 'sillage-sombre';
+---
+<section id={id} class:list={['hero', `hero--${variant}`, variant === 'scene' && `hero--scene-${scene.disposition ?? 'fond'} hero--cadrage-${scene.cadrage_mobile ?? 'droite'}`, `bg-${photo ? 'sombre' : background}`, `sp-${spacing}`, sombre && 'on-dark']} style={variant === 'scene' ? `--scene-ratio:${(dimScene.h / dimScene.l).toFixed(4)}` : undefined}>
+  {variant === 'scene' && (
+    <div class="hero__scene">
+      <div class="hero__scene-cadre">
+        {scene.fond && <div class="hero__scene-fond" aria-hidden="true" style={`--fond-largeur:${scene.fond_largeur ?? 100}%`}><Img image={scene.fond} priorite sizes={`${Math.round((scene.fond_largeur ?? 100) * 1.2)}vw`} /></div>}
+        <img class="hero__scene-svg" src={scene.svg} alt={scene.alt ?? ''} width={dimScene.l} height={dimScene.h} loading="eager" fetchpriority="high" decoding="async" />
+      </div>
+    </div>
+  )}
+  {variant !== 'plein-ecran' && background.startsWith('sillage') && <Sillage variante={background === 'sillage' ? 'clair' : 'sombre'} />}
+  {photo && image && (
+    <div class="hero__media" aria-hidden={image.alt ? undefined : 'true'}>
+      <Img image={image} priorite sizes="100vw" class="hero__img" />
+      <div class:list={['hero__voile', variant === 'affiche' && 'hero__voile--affiche']}></div>
+    </div>
+  )}
+  <div class="container hero__grille">
+    <div class="hero__texte">
+      {surtitre && (variant === 'split'
+        ? <p class="eyebrow hero__surtitre">{surtitre}</p>
+        : variant === 'affiche'
+        ? <p class="hero__mention">{surtitre}</p>
+        : <p class="hero__pastille"><span class="point" aria-hidden="true"></span>{surtitre}</p>)}
+      <h1 class="hero__titre">{titre}</h1>
+      {texte && <p class="hero__intro">{texte}</p>}
+      <Boutons ctas={ctas} />
+      {points.length > 0 && (
+        <ul class="hero__points">{points.map((p: string) => <li>{p}</li>)}</ul>
+      )}
+      {fiche && (
+        <p class="hero__google"><Etoiles note={fiche.note} taille={17} /><span><strong>{noteFr(fiche.note)}</strong> · <a href={fiche.lien} target="_blank" rel="noopener">{fiche.nombre.toLocaleString('fr-FR')} avis Google<span class="visually-hidden"> (nouvel onglet)</span></a></span></p>
+      )}
+    </div>
+    {variant === 'split' && image && (
+      <div class="hero__split-media"><Img image={image} priorite sizes="(min-width: 900px) 50vw, 100vw" class="hero__img" /></div>
+    )}
+    {variant === 'split' && !image && diaporama && (
+      <div class="hero__split-media"><Diaporama vues={diaporama.vues} cadre={diaporama.cadre} label={`${titre} : en images`} priorite /></div>
+    )}
+    {variant === 'split' && !image && !diaporama && Illustration && (
+      <div class="hero__split-media"><Illustration {...illustration} /></div>
+    )}
+  </div>
+</section>
+
+<style>
+  .hero { position: relative; overflow: hidden; }
+  .bg-clair { background: var(--c-surface); }
+  .bg-alt { background: var(--c-surface-alt); }
+  .bg-sombre { background: var(--c-surface-dark); }
+  .bg-accent { background: var(--c-surface-accent, var(--c-primary)); }
+  .bg-sillage { background: var(--c-surface); }
+  .bg-sillage-sombre { background: var(--c-surface-dark); }
+  .hero__grille { position: relative; z-index: 1; }
+  .hero__texte { max-width: 660px; display: flex; flex-direction: column; gap: 22px; }
+  .hero__pastille { align-self: flex-start; display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--c-primary); color: #fff; font-size: 12.5px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+  .point { width: 7px; height: 7px; border-radius: 50%; background: var(--c-accent); flex: none; }
+  .hero__titre { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.025em; line-height: 1.04; color: var(--c-text); }
+  .hero__intro { font-size: var(--fs-lg); line-height: var(--lh-body); color: var(--c-text-muted); max-width: 560px; }
+  .hero__points { list-style: none; margin: 0; padding: 8px 0 0; display: flex; flex-wrap: wrap; gap: 10px 26px; }
+  .hero__points li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--c-text-muted); }
+  .hero__points li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: oklch(0.70 0.13 158); }
+  .hero__google { margin: 0; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 15px; color: var(--c-text-muted); }
+  .hero__google strong { color: var(--c-text); font-weight: 700; }
+  .hero__google a { color: inherit; }
+  :global(.on-dark) .hero__google, :global(.on-dark) .hero__google strong { color: var(--c-on-dark); }
+  :global(.on-dark) .hero__titre { color: var(--c-on-dark); }
+  :global(.on-dark) .hero__intro { color: var(--c-on-dark-body); }
+  :global(.on-dark) .hero__points li { color: oklch(0.86 0.01 160); }
+
+  /* plein-écran : photo en fond, voile dégradé à gauche */
+  .hero--plein-ecran { min-height: 520px; display: flex; align-items: center; }
+  .hero--plein-ecran .hero__grille { padding-block: 64px; }
+  .hero__media { position: absolute; inset: 0; }
+  .hero__media :global(img), .hero__media :global(picture) { width: 100%; height: 100%; object-fit: cover; }
+  .hero__voile { position: absolute; inset: 0; background: linear-gradient(100deg, oklch(0.24 0.02 160 / 0.94) 0%, oklch(0.24 0.02 160 / 0.8) 42%, oklch(0.24 0.02 160 / 0.12) 78%, oklch(0.24 0.02 160 / 0) 100%); }
+  @media (max-width: 760px) { .hero__voile { background: oklch(0.24 0.02 160 / 0.82); } }
+
+  /* affiche : la photo occupe la hauteur de l'écran, grand titre posé en bas à gauche, voile par le bas */
+  .hero--affiche { min-height: min(92svh, 960px); display: flex; align-items: flex-end; }
+  .hero--affiche .hero__grille { width: 100%; padding-block: 132px clamp(44px, 6.5vw, 92px); }
+  .hero--affiche .hero__texte { max-width: 920px; gap: 20px; }
+  .hero--affiche .hero__titre { font-size: var(--fs-affiche, clamp(42px, 7.2vw, 104px)); font-weight: var(--fw-title, 700); line-height: 0.98; letter-spacing: var(--tracking-affiche, -0.02em); text-wrap: balance; }
+  .hero--affiche .hero__intro { max-width: 54ch; font-size: var(--fs-lg); }
+  .hero--affiche .hero__points { padding: 4px 0 0; }
+  .hero--affiche .hero__points li::before { background: var(--c-accent); }
+  .hero__mention { margin: 0; font-family: var(--font-surtitre, var(--font-title)); font-style: var(--surtitre-style, italic); font-size: var(--fs-surtitre, 19px); color: var(--c-on-dark-body); }
+  .hero__voile--affiche { background:
+    linear-gradient(90deg, rgb(var(--c-voile, 14 17 16) / 0.5) 0%, rgb(var(--c-voile, 14 17 16) / 0.25) 45%, rgb(var(--c-voile, 14 17 16) / 0) 70%),
+    linear-gradient(0deg, rgb(var(--c-voile, 14 17 16) / 0.86) 0%, rgb(var(--c-voile, 14 17 16) / 0.55) 34%, rgb(var(--c-voile, 14 17 16) / 0) 68%),
+    linear-gradient(180deg, rgb(var(--c-voile, 14 17 16) / 0.3), rgb(var(--c-voile, 14 17 16) / 0) 24%); }
+  @media (max-width: 760px) {
+    .hero--affiche { min-height: 86svh; }
+    .hero__voile--affiche { background: linear-gradient(0deg, rgb(var(--c-voile, 14 17 16) / 0.9) 0%, rgb(var(--c-voile, 14 17 16) / 0.6) 48%, rgb(var(--c-voile, 14 17 16) / 0.15) 100%); }
+  }
+
+  /* split : texte à gauche, image ou illustration à droite */
+  .hero--split { padding-block: clamp(56px, 7.2vw, 104px) clamp(64px, 7.8vw, 112px); }
+  .hero--split .hero__grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: clamp(40px, 5vw, 72px); align-items: center; }
+  .hero--split .hero__texte { gap: 32px; }
+  .hero--split .hero__titre { font-weight: 500; line-height: 1.02; }
+  .hero--split .hero__intro { font-size: var(--fs-xl); color: var(--c-text-body); max-width: 560px; }
+  .hero--split .hero__points { padding: 0; gap: 10px 28px; }
+  .hero--split .hero__points li { font-size: 15px; color: var(--c-text-muted); }
+  .hero--split .hero__points li::before { display: none; }
+  .hero--split :global(.boutons) { gap: 16px; }
+  .hero--split :global(.btn--secondaire) { padding-inline: 26px; }
+  /* split sur fond sombre : les couleurs claires l'emportent sur celles du split (sinon texte gris sur noir) */
+  .hero--split.on-dark .hero__intro { color: var(--c-on-dark-body); }
+  .hero--split.on-dark .hero__points li { color: var(--c-on-dark-muted); }
+  .hero__split-media :global(img) { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-xl); }
+
+  /* scene : illustration large (SVG), photo facultative derrière ses parties transparentes.
+     Téléphone et tablette : texte puis illustration recadrée. Grand écran : texte posé sur la partie gauche. */
+  .hero--scene { display: flex; flex-direction: column-reverse; padding: 0; }
+  .hero--scene .hero__grille { padding-block: clamp(40px, 6vw, 72px) 28px; }
+  .hero--scene .hero__titre { font-size: clamp(34px, 5vw, 58px); line-height: 1.05; }
+  /* Sur une illustration colorée, le gris clair ne contraste pas assez : texte courant plus foncé */
+  .hero--scene .hero__intro, .hero--scene .hero__points li { color: var(--c-text-body); }
+  /* Le cadre a les proportions de l'illustration et « couvre » la scène (comme object-fit: cover), calé en bas selon
+     le cadrage : la photo, posée dans le cadre (partie droite, --fond-largeur), reste derrière les mêmes zones de
+     l'illustration quel que soit le recadrage. */
+  .hero__scene { position: relative; overflow: hidden; aspect-ratio: 4 / 3; container-type: size; background: var(--c-scene-ciel, linear-gradient(180deg, oklch(0.93 0.03 220), oklch(0.97 0.015 210))); }
+  .hero__scene-cadre { position: absolute; bottom: 0; right: 0; width: max(100cqw, 100cqh / var(--scene-ratio)); aspect-ratio: 1 / var(--scene-ratio); }
+  .hero--cadrage-gauche .hero__scene-cadre { right: auto; left: 0; }
+  .hero--cadrage-centre .hero__scene-cadre { right: auto; left: 50%; translate: -50% 0; }
+  .hero__scene-fond { position: absolute; top: 0; bottom: 0; right: 0; width: var(--fond-largeur, 100%); }
+  .hero__scene-fond :global(picture), .hero__scene-fond :global(img) { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .hero__scene-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  @media (min-width: 640px) { .hero__scene { aspect-ratio: 16 / 9; } }
+  /* Grand écran : la section a la hauteur naturelle de l'illustration, et le texte se pose sur sa partie gauche libre
+     (--scene-largeur-texte). Si le texte demande plus de hauteur, l'illustration s'agrandit en restant calée en bas à
+     droite : seul le bord gauche (le décor libre) est rogné. */
+  @media (min-width: 1200px) {
+    .hero--scene-fond { display: block; min-height: calc(100vw * var(--scene-ratio)); }
+    .hero--scene-fond .hero__scene { position: absolute; inset: 0; aspect-ratio: auto; }
+    .hero--scene-fond .hero__scene-cadre { right: 0; left: auto; translate: none; }
+    .hero--scene-fond .hero__grille { min-height: inherit; display: flex; align-items: center; padding-block: 40px 56px; }
+    .hero--scene-fond .hero__texte { max-width: min(var(--scene-largeur-texte, calc(52vw - var(--gutter))), 620px); gap: 18px; }
+    .hero--scene-fond .hero__titre { font-size: clamp(36px, 3.3vw, 60px); }
+    .hero--scene-fond .hero__intro { font-size: var(--fs-md); }
+    .hero--scene-fond :global(.btn--secondaire) { background: rgb(255 255 255 / 0.72); }
+  }
+  /* scene « cote » : illustration entière à droite du texte (sous le texte sur téléphone) */
+  .hero--scene-cote { background: var(--c-surface-alt); }
+  .hero--scene-cote .hero__scene { aspect-ratio: auto; container-type: normal; background: none; width: 100%; max-width: 520px; margin: 0 auto; padding: 0 var(--gutter) 40px; }
+  .hero--scene-cote .hero__scene-cadre { position: relative; width: 100%; }
+  /* Illustrations hautes : bornées en hauteur (proportions gardées) pour ne pas allonger le hero */
+  .hero--scene-cote .hero__scene-svg { position: static; height: auto; max-height: min(300px, 45vh); object-fit: contain; }
+  @media (min-width: 900px) { .hero--scene-cote .hero__scene-svg { max-height: min(460px, 62vh); } }
+  @media (min-width: 900px) {
+    .hero--scene-cote { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; padding-inline: max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter))); column-gap: clamp(32px, 5vw, 80px); }
+    .hero--scene-cote .hero__grille { grid-column: 1; grid-row: 1; padding: clamp(56px, 7vw, 104px) 0; width: auto; max-width: none; margin: 0; }
+    .hero--scene-cote .hero__scene { grid-column: 2; grid-row: 1; padding: 32px 0; max-width: 560px; }
+  }
+
+  /* minimal : titre et texte, sans image */
+  .hero--minimal { padding-block: 56px 32px; }
+  .hero--minimal.bg-clair { background: var(--c-surface-alt); }
+  .hero--minimal .hero__titre { font-size: clamp(30px, 4vw, 46px); }
+</style>

@@ -1,0 +1,30 @@
+titre: Nos caves
+statut: publie
+seo:
+  titre: "Nos 4 caves à vin en Provence · La Cave à Aimé"
+  description: "La Cave à Aimé à Mérindol, Lauris, Salon-de-Provence et Cheval-Blanc : adresses, horaires et téléphone de chaque cave. Vins bio, fromages, dégustation."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: Nos caves
+    titre: "Quatre caves à vin entre Luberon et Provence"
+    texte: "Choisissez la plus proche : chaque cave a ses horaires et son numéro."
+  - block: features
+    variant: grille-icones
+    items:
+      - icone: repere
+        titre: Mérindol
+        texte: "12 rue de la Fontaine · 04 90 72 38 01 · cave et bar à vin"
+        lien: { label: "Horaires et accès", href: /caves/merindol }
+      - icone: repere
+        titre: Lauris
+        texte: "43 route de Cavaillon · 04 90 07 59 36"
+        lien: { label: "Horaires et accès", href: /caves/lauris }
+      - icone: repere
+        titre: Salon-de-Provence
+        texte: "127 allée du Tour de France · 04 90 42 25 33"
+        lien: { label: "Horaires et accès", href: /caves/salon-de-provence }
+      - icone: repere
+        titre: Cheval-Blanc
+        texte: "732 avenue de la Canebière · 04 32 52 92 39"
+        lien: { label: "Horaires et accès", href: /caves/cheval-blanc }

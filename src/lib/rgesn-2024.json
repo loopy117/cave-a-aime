@@ -1,0 +1,407 @@
+{
+ "source": "Référentiel général de l’écoconception des services numériques (RGESN), version 2024, Arcep / Arcom / ADEME, mai 2024",
+ "url": "https://ecoresponsable.numerique.gouv.fr/docs/2024/rgesn-mai2024/referentiel_general_ecoconception_des_services_numeriques_version_2024.pdf",
+ "themes": {
+  "1": "Stratégie",
+  "2": "Spécifications",
+  "3": "Architecture",
+  "4": "Expérience et interface utilisateur",
+  "5": "Contenus",
+  "6": "Frontend",
+  "7": "Backend",
+  "8": "Hébergement",
+  "9": "Algorithmie"
+ },
+ "criteres": [
+  {
+   "id": "1.1",
+   "libelle": "Le service numérique a-t-il été évalué favorablement en termes d’utilité en tenant compte de ses impacts environnementaux ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "1.2",
+   "libelle": "Le service numérique a-t-il défini ses cibles utilisatrices, les besoins métiers et les attentes réelles des utilisateurs-cibles ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "1.3",
+   "libelle": "Le service numérique a-t-il au moins un référent identifié en écoconception numérique ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "1.4",
+   "libelle": "Le service numérique réalise-t-il régulièrement des revues pour s’assurer du respect de sa démarche d’écoconception ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "1.5",
+   "libelle": "Le service numérique s’est-il fixé des objectifs en matière de réduction ou de limitation de ses propres impacts environnementaux ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "1.6",
+   "libelle": "Le service numérique collecte-t-il la donnée de façon responsable et raisonnée ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "1.7",
+   "libelle": "Le service numérique a-t-il recours à un niveau de chiffrement adapté à ses besoins ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "1.8",
+   "libelle": "Le service numérique a-t-il mis en place des efforts d’open source ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "1.9",
+   "libelle": "Le service numérique a-t-il été conçu avec des technologies standard interopérables plutôt que des technologies spécifiques et fermées ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "1.10",
+   "libelle": "Le service numérique repose-t-il sur des API documentées et ouvertes pour interagir avec le matériel ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "2.1",
+   "libelle": "Le service numérique a-t-il défini la liste des profils de matériels que les utilisateurs vont pouvoir employer pour y accéder ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "2.2",
+   "libelle": "Le service numérique est-il utilisable sur d’anciens modèles de terminaux ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "2.3",
+   "libelle": "Le service numérique est-il utilisable via une connexion bas débit ou hors connexion ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "2.4",
+   "libelle": "Le service numérique est-il utilisable sur d’anciennes versions de système d’exploitation et de navigateurs web ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "2.5",
+   "libelle": "Le service numérique s’adapte-t-il à différents types de terminaux d’affichage ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "2.6",
+   "libelle": "Le service numérique a-t-il été conçu avec une revue de conception et une revue de code comprenant parmi ses objectifs la réduction des impacts environnementaux de chaque fonctionnalité ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "2.7",
+   "libelle": "Le service numérique a-t-il prévu une stratégie de maintenance et de décommissionnement ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "2.8",
+   "libelle": "Le service numérique impose-t-il à ses fournisseurs de garantir une démarche de réduction de leurs impacts environnementaux ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "2.9",
+   "libelle": "Le service numérique a-t-il pris en compte les impacts environnementaux des composants d’interface prêts à l’emploi utilisés ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "2.10",
+   "libelle": "Le service numérique a-t-il pris en compte les impacts environnementaux des services tiers utilisés lors de leur sélection ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "3.1",
+   "libelle": "Le service numérique repose-t-il sur une architecture, des ressources ou des composants conçus pour réduire leurs propres impacts environnementaux ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "3.2",
+   "libelle": "Le service numérique fonctionne-t-il sur une architecture pouvant adapter la quantité de ressources utilisées à la consommation du service ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "3.3",
+   "libelle": "Le service numérique est-il en mesure de supporter l’évolution technique des protocoles ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "3.4",
+   "libelle": "Le service numérique garantit-il la mise à disposition de mises à jour correctives pendant toute la durée de vie prévue des équipements et des logiciels liés au service ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "3.5",
+   "libelle": "Le service numérique propose-t-il d’installer des mises à jour correctives indépendamment des mises à jour évolutives de façon transparente ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "3.6",
+   "libelle": "Le service numérique propose-t-il les mises à jour incrémentielles, afin de ne pas remplacer tout le code à chaque mise à jour ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "3.7",
+   "libelle": "Le service numérique optimise-t-il la sollicitation des environnements de développement, de préproduction ou de test en fonction de ses besoins ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "4.1",
+   "libelle": "Le service numérique comporte-t-il uniquement des animations, vidéos et sons dont la lecture automatique est désactivée ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "4.2",
+   "libelle": "Le service numérique affiche-t-il uniquement des contenus sans défilement infini ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "4.3",
+   "libelle": "Le service numérique optimise-t-il le parcours de navigation pour chaque fonctionnalité principale ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "4.4",
+   "libelle": "Le service numérique permet-il à l’utilisateur de décider de l’activation d’un service tiers ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "4.5",
+   "libelle": "Le service numérique utilise-t-il majoritairement des composants fonctionnels natifs du système d’exploitation, du navigateur ou du langage utilisé ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "4.6",
+   "libelle": "Le service numérique utilise-t-il uniquement du contenu vidéo, audio et animé porteur d’informations ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "4.7",
+   "libelle": "Le service numérique opte-t-il pour les choix les plus sobres entre le texte, l’image, l’audio ou la vidéo, selon les besoins utilisateurs ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "4.8",
+   "libelle": "Le service numérique limite-t-il le nombre des polices de caractères téléchargées ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "4.9",
+   "libelle": "Le service numérique limite-t-il les requêtes serveur lors de la saisie utilisateur ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "4.10",
+   "libelle": "Le service numérique informe-t-il l’utilisateur du format de saisie attendu, en évitant les requêtes serveur inutiles pour la soumission d’un formulaire ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "4.11",
+   "libelle": "Le service numérique informe-t-il l’utilisateur, avant le transfert, des poids et formats de fichier attendus ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "4.12",
+   "libelle": "Le service numérique indique-t-il à l’utilisateur que l’utilisation d’une fonctionnalité a des impacts environnementaux importants ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "4.13",
+   "libelle": "Le service numérique limite-t-il le recours aux notifications, tout en laissant la possibilité à l’utilisateur de les désactiver ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "4.14",
+   "libelle": "Le service numérique évite-t-il le recours à des procédés manipulatoires dans son interface utilisateur ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "4.15",
+   "libelle": "Le service numérique fournit-il à l’utilisateur un moyen de contrôle sur ses usages afin de suivre et de réduire les impacts environnementaux associés ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "5.1",
+   "libelle": "Le service numérique utilise-t-il un format de fichier adapté au contenu et au contexte de visualisation de chaque image ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "5.2",
+   "libelle": "Le service numérique propose-t-il des images dont le niveau de compression est adapté au contenu et au contexte de visualisation ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "5.3",
+   "libelle": "Le service numérique utilise-t-il, pour chaque vidéo, une définition adaptée au contenu et au contexte de visualisation ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "5.4",
+   "libelle": "Le service numérique propose-t-il des vidéos dont le mode de compression est efficace et adapté au contenu et au contexte de visualisation ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "5.5",
+   "libelle": "Le service numérique propose-t-il un mode « écoute seule » pour ses vidéos ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "5.6",
+   "libelle": "Le service numérique propose-t-il des contenus audios dont le mode de compression est adapté au contenu et au contexte d’écoute ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "5.7",
+   "libelle": "Le service numérique utilise-t-il un format de fichier adapté au contenu et au contexte d’utilisation pour chaque document ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "5.8",
+   "libelle": "Le service numérique a-t-il une stratégie d’archivage et de suppression, automatique ou manuelle, des contenus obsolètes ou périmés ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "6.1",
+   "libelle": "Le service numérique s’astreint-il à un poids maximum et une limite de requête par écran ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "6.2",
+   "libelle": "Le service numérique utilise-t-il des mécanismes de mise en cache pour la totalité des contenus transférés dont il a le contrôle ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "6.3",
+   "libelle": "Le service numérique a-t-il mis en place des techniques de compression pour les ressources transférées dont il a le contrôle ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "6.4",
+   "libelle": "Le service numérique affiche-t-il majoritairement des images dont les dimensions d’origine correspondent aux dimensions du contexte d’affichage ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "6.5",
+   "libelle": "Le service numérique évite-t-il de déclencher le chargement de ressources et de contenus inutilisés pour chaque fonctionnalité ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "6.6",
+   "libelle": "Le service numérique restreint-il l’usage des capteurs des terminaux utilisateurs au besoin du service ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "6.7",
+   "libelle": "Le service numérique héberge-t-il toutes les ressources statiques transférées dont il est l’émetteur sur un même domaine ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "7.1",
+   "libelle": "Le service numérique a-t-il recours à un système de cache serveur pour les données les plus utilisées ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "7.2",
+   "libelle": "Le service numérique met-il en place des durées de conservation sur les données et documents en vue de leur suppression ou archivage passé ce délai ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "7.3",
+   "libelle": "Le service numérique informe-t-il l’utilisateur d’un traitement en cours en arrière-plan ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "7.4",
+   "libelle": "Le service numérique s’appuie-t-il sur un mécanisme de consensus qui minimise sa consommation de ressources ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "8.1",
+   "libelle": "Le service numérique utilise-t-il un hébergement ayant une démarche de réduction de son empreinte environnementale ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "8.2",
+   "libelle": "Le service numérique utilise-t-il un hébergement qui fournit une politique de gestion durable des équipements ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "8.3",
+   "libelle": "Le service numérique utilise-t-il un hébergement dont le PUE (Power Usage Effectiveness) est minimisé ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "8.4",
+   "libelle": "Le service numérique utilise-t-il un hébergement dont son WUE (Water Usage Effectiveness) est minimisé ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "8.5",
+   "libelle": "Le service numérique utilise-t-il un hébergement dont l’origine de consommation d’électricité est documentée et majoritairement d’origine renouvelable ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "8.6",
+   "libelle": "Le service numérique utilise-t-il un hébergement dont la localisation géographique est cohérente avec ses activités et qui minimise son empreinte environnementale ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "8.7",
+   "libelle": "Le service numérique utilise-t-il un hébergement qui traite efficacement la chaleur produite par les serveurs ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "8.8",
+   "libelle": "Le service numérique héberge-t-il de façon distincte les données « chaudes » et « froides » ?",
+   "priorite": "Modéré"
+  },
+  {
+   "id": "8.9",
+   "libelle": "Le service numérique duplique-t-il les données uniquement lorsque cela est nécessaire ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "8.10",
+   "libelle": "Le service numérique tient-il compte des contraintes externes pour minimiser l’impact environnemental des calculs et transferts de données asynchrones ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "9.1",
+   "libelle": "Le service numérique a-t-il interrogé la nécessité d’une phase d’entraînement pour éviter un usage non justifié et déraisonné ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "9.2",
+   "libelle": "Le service numérique utilise-t-il une phase d’apprentissage avec un niveau de complexité minimisé et proportionné à l’usage effectif du service ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "9.3",
+   "libelle": "Le service numérique a-t-il mis en place des mécanismes visant à limiter la quantité d’entraînement nécessaire à son fonctionnement ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "9.4",
+   "libelle": "Le service numérique limite-il la quantité de données utilisées pour la phase d’apprentissage au strict nécessaire ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "9.5",
+   "libelle": "Le service numérique optimise-t-il l’occurrence de mise à jour et de réentraînement des modèles en fonction de ses besoins et des cibles utilisatrices ?",
+   "priorite": "Prioritaire"
+  },
+  {
+   "id": "9.6",
+   "libelle": "Le service numérique utilise-t-il des techniques de compression pour les modèles utilisés lors de la phase d’entraînement ?",
+   "priorite": "Recommandé"
+  },
+  {
+   "id": "9.7",
+   "libelle": "Le service numérique utilise-t-il une stratégie d’inférence optimisée en termes de consommation de ressources et des cibles utilisatrices ?",
+   "priorite": "Prioritaire"
+  }
+ ]
+}

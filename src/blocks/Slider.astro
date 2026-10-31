@@ -1,0 +1,31 @@
+---
+import { sortant, estExterne, NOUVEL_ONGLET } from '../lib/liens';
+import Section from '../components/Section.astro';
+import Img from '../components/Img.astro';
+const { variant = 'contenu', background, spacing, id, surtitre, titre, intro, slides = [] } = Astro.props;
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro} largeur={variant === 'plein-large' ? 'pleine' : 'normale'}>
+  <ul class:list={['sl', `sl--${variant}`]} tabindex="0" aria-label={titre ?? 'Diaporama'}>
+    {slides.map((s: any) => (
+      <li class="sl__slide">
+        <Img image={s.image} sizes="100vw" />
+        {(s.titre || s.texte || s.cta) && (
+          <div class="sl__legende on-dark">
+            {s.titre && <p class="sl__titre">{s.titre}</p>}
+            {s.texte && <p class="sl__texte">{s.texte}</p>}
+            {s.cta && <a class={`btn btn--sm btn--${s.cta.style ?? 'primaire'}`} href={s.cta.href} {...sortant(s.cta.href, Astro.site)}>{s.cta.label}</a>}
+          </div>
+        )}
+      </li>
+    ))}
+  </ul>
+</Section>
+<style>
+  .sl { list-style: none; margin: 0; padding: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; }
+  .sl__slide { position: relative; flex: 0 0 100%; scroll-snap-align: start; border-radius: var(--radius-xl); overflow: hidden; }
+  .sl--plein-large .sl__slide { border-radius: 0; }
+  .sl__slide :global(img) { width: 100%; aspect-ratio: 16 / 7; object-fit: cover; }
+  .sl__legende { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; background: linear-gradient(transparent, oklch(0.24 0.02 160 / 0.85)); }
+  .sl__titre { font-size: var(--fs-h3); font-weight: 700; color: #fff; }
+  .sl__texte { color: var(--c-on-dark-body); }
+</style>

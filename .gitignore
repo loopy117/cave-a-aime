@@ -1,0 +1,14 @@
+node_modules
+dist
+.astro
+public/formulaire/vendor/
+public/formulaire/composer.lock
+public/xmedia-ai/contexte/
+_demande/
+public/admin/decap/
+public/admin/config.yml
+public/admin/config.json
+ai/maillage.json
+ai/catalogue.md
+.cache/
+controle/

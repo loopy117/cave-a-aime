@@ -1,0 +1,48 @@
+titre: "Lauris"
+statut: publie
+seo:
+  titre: "Cave à vin bio à Lauris · La Cave à Aimé"
+  description: "Vins bio du Luberon à prix producteurs, huile d'olive et fromages, à quelques minutes de Lourmarin. Grand parking, dégustation offerte."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: "Cave à vin · Lauris"
+    titre: "La Cave de LaurUs by Aimé, à Lauris"
+    texte: "43 route de Cavaillon, 84360 Lauris"
+    ctas:
+      - label: "Appeler la cave"
+        href: "tel:+33490075936"
+        style: primaire
+      - label: "Itinéraire"
+        href: "https://www.google.com/maps/search/?api=1&query=43+route+de+Cavaillon+84360+Lauris"
+        style: secondaire
+  - block: texte
+    variant: etroit
+    titre: "La Cave de LaurUs by Aimé"
+    contenu: |
+      Bienvenue à Lauris, à quelques minutes de Lourmarin. Venez découvrir nos vins bio du coin à prix producteurs, notre huile d'olive et nos fromages. Un grand parking vous attend, pratique pour charger les bonnes bouteilles. Dégustation offerte.
+
+      « Laurus, c'est Lauris en latin… easy ! » — Aimé
+  - block: features
+    variant: liste
+    background: alt
+    surtitre: Horaires et contact
+    titre: "Nous trouver à Lauris"
+    items:
+      - icone: horloge
+        titre: Horaires
+        texte: "Du mardi au samedi : 10 h – 12 h 30 et 16 h – 19 h 30 · Dimanche et lundi : fermé"
+      - icone: repere
+        titre: Adresse
+        texte: "43 route de Cavaillon, 84360 Lauris"
+      - icone: telephone
+        titre: "Téléphone et e-mail"
+        texte: "04 90 07 59 36 · lauris@cave-a-aime.fr"
+  - block: cta
+    variant: carte
+    titre: "Un plateau à préparer, une bouteille à mettre de côté ?"
+    texte: "Appelez la cave de Lauris : on prépare votre commande pour votre passage."
+    ctas:
+      - label: "04 90 07 59 36"
+        href: "tel:+33490075936"
+        style: primaire

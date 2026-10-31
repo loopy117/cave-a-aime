@@ -1,0 +1,52 @@
+titre: Événements
+statut: publie
+seo:
+  titre: "Bar à vin mobile pour vos événements · Made In Luberon"
+  description: "Made In Luberon Events : bar à vin mobile et comptoirs gourmands pour mariages, anniversaires et soirées, dans le Luberon et en Provence."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: Made In Luberon Events
+    titre: "Un bar à vin et des comptoirs gourmands à votre événement"
+    texte: "Mariage, anniversaire ou simplement une bonne occasion : notre équipe se déplace dans le Luberon et en Provence."
+    ctas:
+      - label: Parlons de votre événement
+        href: /contact
+        style: primaire
+  - block: texte
+    variant: etroit
+    titre: Bar à vin mobile et comptoir éphémère
+    contenu: |
+      Nous organisons des prestations sur des lieux de réception, chez des particuliers ou en pleine nature, dans les champs d'oliviers ou les vignes.
+  - block: features
+    variant: grille-icones
+    background: alt
+    surtitre: Des idées
+    titre: Quelques formules
+    items:
+      - icone: soleil
+        titre: Un après-midi pétanque
+        texte: "Bar à pastis et bar à vin."
+      - icone: etoile
+        titre: Un dîner parfait
+        texte: "Accords mets et vins, conseil et service."
+      - icone: eclair
+        titre: Danser jusqu'au bout de la nuit
+        texte: "Bar à cocktails et spiritueux."
+      - icone: plus
+        titre: Une soirée tapas en plein air
+        texte: "Bar à vin, bière, comptoir à fromage et charcuterie, et concert."
+      - icone: check
+        titre: Un apéritif ambiance bar à vin
+        texte: "Vins, tonneaux et comptoirs gourmands, avec les bons produits du Sud."
+  - block: cta
+    variant: carte
+    titre: "Racontez-nous votre événement"
+    texte: "Date, lieu, nombre d'invités : nous vous proposons une formule."
+    ctas:
+      - label: Nous écrire
+        href: /contact
+        style: primaire
+      - label: "04 90 72 38 01"
+        href: "tel:+33490723801"
+        style: secondaire

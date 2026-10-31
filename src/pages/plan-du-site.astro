@@ -1,0 +1,36 @@
+---
+/** Plan du site (RGAA 12.1 : deuxième moyen de navigation) : toutes les pages publiées, par rubrique. */
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import { indexSite } from '../lib/site';
+const index = await indexSite();
+const noindex = new Set<string>();
+for (const p of await getCollection('pages')) if (p.data.seo?.noindex) noindex.add(p.id === 'index' ? '/' : '/' + p.id.replace(/\/index$/, ''));
+const entrees = [...index.values()].filter((e) => e.publie && !noindex.has(e.url) && e.url !== '/').sort((a, b) => a.url.localeCompare(b.url, 'fr'));
+// Rubrique = premier segment de l'adresse ; la page de même nom (ex. /services) en est le titre
+const rubriques = new Map<string, typeof entrees>();
+for (const e of entrees) { const r = e.url.split('/')[1]; rubriques.set(r, [...(rubriques.get(r) ?? []), e]); }
+const groupes = [...rubriques.entries()].map(([r, l]) => ({ tete: l.find((e) => e.url === '/' + r), enfants: l.filter((e) => e.url !== '/' + r) }));
+---
+<Base titre="Plan du site" seo={{ titre: 'Plan du site', description: 'Toutes les pages du site, classées par rubrique.' }} url="/plan-du-site">
+  <Section largeur="etroite">
+    <h1 class="h2 plan__titre">Plan du site</h1>
+    <ul class="plan">
+      <li><a href="/">Accueil</a></li>
+      {groupes.map((g) => (
+        <li>
+          {g.tete ? <a href={g.tete.url}>{g.tete.titre}</a> : <span>{g.enfants[0]?.titre}</span>}
+          {g.enfants.length > (g.tete ? 0 : 1) && <ul>{(g.tete ? g.enfants : g.enfants.slice(1)).map((e) => <li><a href={e.url}>{e.titre}</a></li>)}</ul>}
+        </li>
+      ))}
+    </ul>
+  </Section>
+</Base>
+<style>
+  .plan__titre { margin: 0 0 24px; }
+  .plan, .plan ul { list-style: none; margin: 0; padding: 0; }
+  .plan { display: flex; flex-direction: column; gap: 14px; font-size: var(--fs-lg, 18px); }
+  .plan ul { margin: 8px 0 0 18px; padding-left: 14px; border-left: 2px solid var(--c-border); display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-md, 16px); }
+  .plan a { text-decoration: underline; text-underline-offset: 3px; }
+</style>

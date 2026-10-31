@@ -1,0 +1,14 @@
+---
+/**
+ * Logo par défaut d'un nouveau site : le nom du site en texte. À remplacer par le logo du client (fichier propre au
+ * site, jamais écrasé par le socle). variante « sombre » : sur fond foncé ; « clair » : sur fond clair.
+ */
+import site from '../../data/site.json';
+interface Props { taille?: number; variante?: 'clair' | 'sombre' }
+const { taille = 40, variante } = Astro.props;
+const couleur = variante === 'sombre' ? '#FFFFFF' : variante === 'clair' ? 'var(--c-ink)' : 'currentColor';
+---
+<span class="logo" style={`font-size:${Math.round(taille * 0.5)}px;color:${couleur}`}>{(site as any).nom}</span>
+<style>
+  .logo { display: inline-block; font-family: var(--font-title, inherit); font-weight: 700; line-height: 1; white-space: nowrap; }
+</style>

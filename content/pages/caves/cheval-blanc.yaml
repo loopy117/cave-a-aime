@@ -1,0 +1,46 @@
+titre: "Cheval-Blanc"
+statut: publie
+seo:
+  titre: "Cave à vin bio à Cheval-Blanc · La Cave à Aimé"
+  description: "Vins bio du Luberon et d'ailleurs, au début de la Canebière à Cheval-Blanc, porte d'entrée du Luberon Sud. Du mardi au samedi."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: "Cave à vin · Cheval-Blanc"
+    titre: "La Cave à Aimé à Cheval-Blanc"
+    texte: "732 avenue de la Canebière, 84460 Cheval-Blanc"
+    ctas:
+      - label: "Appeler la cave"
+        href: "tel:+33432529239"
+        style: primaire
+      - label: "Itinéraire"
+        href: "https://www.google.com/maps/search/?api=1&query=732+avenue+de+la+Canebière+84460+Cheval-Blanc"
+        style: secondaire
+  - block: texte
+    variant: etroit
+    titre: "Une histoire de partage et de bonnes choses"
+    contenu: |
+      Bienvenue à Cheval-Blanc, porte d'entrée du Luberon Sud. La cave, au début de la Canebière, vous fait découvrir sa sélection de vins bio du Luberon et d'ailleurs. On vous accueille aussi pour vos apéros.
+  - block: features
+    variant: liste
+    background: alt
+    surtitre: Horaires et contact
+    titre: "Nous trouver à Cheval-Blanc"
+    items:
+      - icone: horloge
+        titre: Horaires
+        texte: "Du mardi au samedi : 10 h – 12 h 30 et 16 h – 19 h 30 · Dimanche et lundi : fermé"
+      - icone: repere
+        titre: Adresse
+        texte: "732 avenue de la Canebière, 84460 Cheval-Blanc"
+      - icone: telephone
+        titre: "Téléphone et e-mail"
+        texte: "04 32 52 92 39 · cheval-blanc@cave-a-aime.fr"
+  - block: cta
+    variant: carte
+    titre: "Un plateau à préparer, une bouteille à mettre de côté ?"
+    texte: "Appelez la cave de Cheval-Blanc : on prépare votre commande pour votre passage."
+    ctas:
+      - label: "04 32 52 92 39"
+        href: "tel:+33432529239"
+        style: primaire

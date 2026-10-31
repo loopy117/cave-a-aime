@@ -1,0 +1,14 @@
+---
+/** Anneau de score (0–100), vert au-delà de 90 comme PageSpeed. */
+interface Props { score: number; taille?: number }
+const { score, taille = 56 } = Astro.props;
+const c = 2 * Math.PI * 34;
+const couleur = score >= 90 ? '#17804B' : score >= 50 ? '#B25E00' : '#C0392B';
+const texte = score >= 90 ? '#115C36' : score >= 50 ? '#7A4100' : '#8E2A20';
+const fond = score >= 90 ? '#DCEFE3' : score >= 50 ? '#FBE9D2' : '#F6D9D5';
+---
+<svg width={taille} height={taille} viewBox="0 0 80 80" role="img" aria-label={`Score ${score} sur 100`}>
+  <circle cx="40" cy="40" r="34" fill="none" stroke={fond} stroke-width="7" />
+  <circle cx="40" cy="40" r="34" fill="none" stroke={couleur} stroke-width="7" stroke-linecap="round" stroke-dasharray={`${(score / 100) * c} ${c}`} transform="rotate(-90 40 40)" />
+  <text x="40" y="47" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="21" font-weight="500" fill={texte}>{score}</text>
+</svg>

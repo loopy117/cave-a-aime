@@ -1,0 +1,55 @@
+---
+/**
+ * « Modifier cette page » : pastille visible seulement sur un appareil où l'on s'est connecté à l'espace client
+ * (repère local posé par /xmedia-ai/ à la connexion, retiré à la déconnexion). Rien pour les visiteurs :
+ * pas d'appel réseau, pas de HTML ajouté. Le repère ne donne aucun droit : l'espace client exige toujours
+ * la connexion et vérifie la page côté serveur.
+ */
+---
+<script is:inline>
+(function bouton() {
+  // Aperçu des modifications (<nom>.apercu.…) : sa propre barre remplace ce bouton
+  if (document.readyState === 'loading') return document.addEventListener('DOMContentLoaded', bouton);
+  if (document.getElementById('xm-apercu')) return;
+  try {
+    if (localStorage.getItem('xm-editeur') !== '1' || sessionStorage.getItem('xm-editeur-masque') === '1') return;
+  } catch (e) { return; }
+  var css = document.createElement('style');
+  css.textContent =
+    '.xm-modif{position:fixed;left:16px;bottom:16px;z-index:9999;display:flex;align-items:center;gap:2px;' +
+    'background:#1d1d1f;color:#fff;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.25);font:500 14px/1 system-ui,sans-serif}' +
+    '.xm-modif a{display:flex;align-items:center;gap:8px;padding:11px 6px 11px 14px;color:inherit;text-decoration:none;border-radius:999px}' +
+    '.xm-modif a:hover{text-decoration:underline}' +
+    '.xm-modif button{all:unset;cursor:pointer;width:28px;height:28px;margin-right:6px;border-radius:50%;text-align:center;line-height:28px;font-size:18px;opacity:.75}' +
+    '.xm-modif button:hover{opacity:1;background:rgba(255,255,255,.15)}' +
+    '.xm-modif a:focus-visible,.xm-modif button:focus-visible{outline:2px solid #fff;outline-offset:2px}' +
+    '@media print{.xm-modif{display:none}}';
+  document.head.appendChild(css);
+  var bloc = document.createElement('div');
+  bloc.className = 'xm-modif';
+  var lien = document.createElement('a');
+  lien.href = '/xmedia-ai/#modifier?page=' + encodeURIComponent(location.pathname);
+  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '16'); svg.setAttribute('height', '16'); svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  var trait = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  trait.setAttribute('d', 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4');
+  trait.setAttribute('fill', 'none'); trait.setAttribute('stroke', 'currentColor');
+  trait.setAttribute('stroke-width', '2'); trait.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(trait);
+  lien.appendChild(svg);
+  lien.appendChild(document.createTextNode('Modifier cette page'));
+  var fermer = document.createElement('button');
+  fermer.type = 'button';
+  fermer.textContent = '×';
+  fermer.setAttribute('aria-label', 'Masquer le bouton Modifier cette page');
+  fermer.title = 'Masquer jusqu’à la fermeture de l’onglet';
+  fermer.addEventListener('click', function () {
+    try { sessionStorage.setItem('xm-editeur-masque', '1'); } catch (e) {}
+    bloc.remove();
+  });
+  bloc.appendChild(lien);
+  bloc.appendChild(fermer);
+  document.body.appendChild(bloc);
+})();
+</script>

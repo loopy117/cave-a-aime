@@ -1,0 +1,44 @@
+titre: Bar à vin
+statut: publie
+seo:
+  titre: "Bar à vin à Mérindol, dans le Luberon · La Cave à Aimé"
+  description: "Le bar à vin de la Cave à Aimé à Mérindol : vins bio, planches de fromage et de charcuterie du coin, terrasse. Vendredi et samedi soir."
+sections:
+  - block: hero
+    variant: minimal
+    surtitre: "Bar à vin · Mérindol"
+    titre: "Un bar à vin décontracté au cœur du Luberon"
+    texte: "Vins bio, planches de fromage et de charcuterie du coin, en terrasse ou dans la salle voûtée."
+    ctas:
+      - label: "Réserver une table"
+        href: "tel:+33490723801"
+        style: primaire
+  - block: texte
+    variant: etroit
+    titre: Bienvenue au bar à vin de la Cave à Aimé
+    contenu: |
+      Le bar à vin est en plein cœur de Mérindol, village typique du Luberon. Ici, on privilégie le vin bio, du coin, et les bons produits du Sud. Pour boire un verre ou passer une soirée, nous accueillons nos amis d'ici et d'ailleurs, et, on l'espère, vous demain.
+  - block: features
+    variant: liste
+    background: alt
+    surtitre: Horaires
+    titre: Quand venir ?
+    items:
+      - icone: horloge
+        titre: Toute l'année
+        texte: "Le bar à vin est ouvert le vendredi et le samedi soir, jusqu'à minuit."
+      - icone: soleil
+        titre: En juillet et en août
+        texte: "Cave et bar à vin ouverts 7 jours sur 7, jusqu'à minuit."
+      - icone: repere
+        titre: Accès
+        texte: "12 rue de la Fontaine, au centre du village. Parking gratuit à 100 m."
+  - block: cta
+    variant: bandeau
+    background: sombre
+    icone: telephone
+    titre: "Réserver une table : un seul numéro"
+    ctas:
+      - label: "04 90 72 38 01"
+        href: "tel:+33490723801"
+        style: primaire

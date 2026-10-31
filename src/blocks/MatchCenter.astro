@@ -1,0 +1,65 @@
+---
+/**
+ * Prochaine rencontre et dernier résultat (toutes équipes, ou une équipe). Rien n'est affiché sans rencontre :
+ * le bloc disparaît tant que le calendrier est vide. Calculé à la construction (le site est reconstruit chaque nuit).
+ */
+import { getCollection } from 'astro:content';
+import Section from '../components/Section.astro';
+import { urlElement } from '../lib/urls';
+import { estPublie } from '../lib/requete';
+import { jourRencontre, heureFr, intitule, score, issue, libelleIssue, lieu, typeRencontre, estAVenir, aScore } from '../lib/rencontres';
+const { background = 'sombre', spacing, id, surtitre, titre, intro, equipe, lien_calendrier = true } = Astro.props;
+const equipes = await getCollection('equipes');
+const nom = (idEq: string) => equipes.find((e) => e.id === idEq)?.data.nom_court ?? idEq;
+const toutes = (await getCollection('rencontres')).filter((r) => estPublie(r as any) && !r.data.annulee && (!equipe || r.data.equipe === equipe));
+const prochaine = toutes.filter((r) => estAVenir(r)).sort((a, b) => +new Date(a.data.date) - +new Date(b.data.date) || (a.data.heure ?? '').localeCompare(b.data.heure ?? ''))[0];
+const derniere = toutes.filter((r) => !estAVenir(r) && (aScore(r) || r.data.type === 'plateau' || r.data.type === 'tournoi')).sort((a, b) => +new Date(b.data.date) - +new Date(a.data.date))[0];
+---
+{(prochaine || derniere) && (
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <div class="mc">
+    {prochaine && (
+      <article class="mc__carte">
+        <p class="mc__etiquette">Prochaine rencontre</p>
+        <p class="mc__equipe">{nom(prochaine.data.equipe)} · {typeRencontre(prochaine.data.type)}</p>
+        <h3 class="mc__titre"><a href={urlElement('rencontres', prochaine.id)}>{intitule(prochaine)}</a></h3>
+        <p class="mc__quand"><time datetime={new Date(prochaine.data.date).toISOString().slice(0, 10)}>{jourRencontre(prochaine.data.date)}</time>{prochaine.data.heure && ` · ${heureFr(prochaine.data.heure)}`}</p>
+        <p class="mc__lieu">{prochaine.data.domicile ? 'À domicile' : 'À l\'extérieur'}{lieu(prochaine) && ` · ${lieu(prochaine)}`}</p>
+      </article>
+    )}
+    {derniere && (
+      <article class="mc__carte mc__carte--res">
+        <p class="mc__etiquette">Dernier résultat</p>
+        <p class="mc__equipe">{nom(derniere.data.equipe)} · {typeRencontre(derniere.data.type)}</p>
+        <h3 class="mc__titre"><a href={urlElement('rencontres', derniere.id)}>{intitule(derniere)}</a></h3>
+        {aScore(derniere)
+          ? <p class="mc__score"><span>{score(derniere)}</span> <span class="mc__issue">{libelleIssue[issue(derniere)!]}</span></p>
+          : <p class="mc__quand">Le compte rendu de la journée</p>}
+        <p class="mc__lieu"><time datetime={new Date(derniere.data.date).toISOString().slice(0, 10)}>{jourRencontre(derniere.data.date)}</time></p>
+      </article>
+    )}
+  </div>
+  {lien_calendrier && <p class="mc__tout"><a href="/calendrier">Tout le calendrier et les résultats</a></p>}
+</Section>
+)}
+<style>
+  .mc { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+  .mc__carte { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 24px; border-radius: var(--radius-lg); background: var(--c-surface); color: var(--c-text); border-top: 4px solid var(--c-accent); }
+  .mc__carte--res { border-top-color: var(--c-bleu); }
+  .mc__carte:has(a:focus-visible) { outline: 3px solid var(--c-accent); outline-offset: 3px; }
+  .mc__etiquette { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--c-eyebrow); }
+  .mc__equipe { margin: 0; font-weight: 700; color: var(--c-text-muted); }
+  .mc__titre { margin: 2px 0; font-family: var(--font-title); font-size: clamp(26px, 3vw, 34px); line-height: 1.05; text-transform: uppercase; color: var(--c-text-strong); }
+  .mc__titre a { color: inherit; text-decoration: none; }
+  .mc__titre a:focus-visible { outline: none; }
+  .mc__titre a::after { content: ''; position: absolute; inset: 0; }
+  .mc__quand { margin: 0; font-weight: 700; color: var(--c-text-strong); }
+  .mc__quand::first-letter, .mc__lieu::first-letter { text-transform: uppercase; }
+  .mc__lieu { margin: 0; color: var(--c-text-muted); }
+  .mc__score { margin: 0; display: flex; align-items: baseline; gap: 12px; }
+  .mc__score span:first-child { font-family: var(--font-title); font-size: 40px; font-weight: 700; line-height: 1; }
+  .mc__issue { font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--c-accent); color: var(--c-accent-ink); }
+  .mc__tout { margin: 18px 0 0; }
+  .mc__tout a { font-weight: 700; color: var(--c-link); }
+  :global(.on-dark) .mc__tout a { color: var(--c-bleu); }
+</style>

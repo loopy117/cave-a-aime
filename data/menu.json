@@ -1,0 +1,46 @@
+{
+  "principal": [
+    {
+      "page": "/caves",
+      "label": "Nos caves",
+      "enfants": [
+        {
+          "page": "/caves/merindol",
+          "label": "Mérindol"
+        },
+        {
+          "page": "/caves/lauris",
+          "label": "Lauris"
+        },
+        {
+          "page": "/caves/salon-de-provence",
+          "label": "Salon-de-Provence"
+        },
+        {
+          "page": "/caves/cheval-blanc",
+          "label": "Cheval-Blanc"
+        }
+      ]
+    },
+    {
+      "page": "/bar-a-vin",
+      "label": "Bar à vin"
+    },
+    {
+      "page": "/fromages",
+      "label": "Fromages et plateaux"
+    },
+    {
+      "page": "/evenements",
+      "label": "Événements"
+    },
+    {
+      "page": "/contact",
+      "label": "Contact"
+    }
+  ],
+  "bouton": {
+    "label": "Nous appeler",
+    "href": "tel:+33490723801"
+  }
+}

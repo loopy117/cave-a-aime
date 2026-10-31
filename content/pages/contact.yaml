@@ -1,0 +1,18 @@
+titre: Contact
+statut: publie
+seo:
+  titre: "Contact · La Cave à Aimé, caves à vin en Provence"
+  description: "Contactez la Cave à Aimé : plateau de fromages, réservation au bar à vin de Mérindol, événement, coffret cadeau ou offre pour les professionnels."
+sections:
+  - block: hero
+    variant: minimal
+    titre: "Écrivez-nous ou appelez la cave"
+    texte: "Plateau, réservation, événement, coffret : on vous répond rapidement."
+  - block: formulaire
+    variant: avec-coordonnees
+    formulaire: contact
+  - block: carte
+    variant: avec-texte
+    titre: "La cave de Mérindol"
+    texte: "12 rue de la Fontaine, 84360 Mérindol. Nos autres caves : [Lauris](/caves/lauris), [Salon-de-Provence](/caves/salon-de-provence), [Cheval-Blanc](/caves/cheval-blanc)."
+    communes: false

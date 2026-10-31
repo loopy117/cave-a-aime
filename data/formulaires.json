@@ -1,0 +1,11 @@
+{
+  "contact": {
+    "module": "contact",
+    "prestations": ["Plateau de fromages", "Réservation au bar à vin", "Événement, mariage, anniversaire", "Coffret cadeau, offre pro", "Autre"],
+    "precisions": [
+      { "id": "cave", "type": "choix", "label": "Quelle cave ?", "options": ["Mérindol", "Lauris", "Salon-de-Provence", "Cheval-Blanc"] },
+      { "id": "date", "type": "texte", "label": "Pour quelle date ?", "aide": "Retrait d'un plateau, soirée, événement" },
+      { "id": "personnes", "type": "texte", "label": "Pour combien de personnes ?" }
+    ]
+  }
+}

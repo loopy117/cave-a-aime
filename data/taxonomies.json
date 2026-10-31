@@ -1,0 +1,15 @@
+{
+  "metiers": {
+    "cave": "Cave à vin",
+    "bar": "Bar à vin",
+    "fromage": "Fromages et plateaux",
+    "evenements": "Événements"
+  },
+  "tags": {
+    "realisations": {
+      "soiree": "Soirée",
+      "mariage": "Mariage",
+      "entreprise": "Entreprise"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+---
+import { sortant, estExterne, NOUVEL_ONGLET } from '../lib/liens';
+import Sillage from './Sillage.astro';
+/**
+ * Enveloppe commune à tous les blocs : fond, espacement, ancre, conteneur
+ * et en-tête facultatif (surtitre, titre H2, intro ou lien « tout voir »).
+ */
+interface Props {
+  background?: 'clair' | 'alt' | 'sombre' | 'accent' | 'sillage' | 'sillage-sombre';
+  spacing?: 'compact' | 'normal' | 'large';
+  id?: string;
+  surtitre?: string;
+  titre?: string;
+  intro?: string;
+  lien?: { label: string; href: string };
+  largeur?: 'normale' | 'etroite' | 'pleine';
+  class?: string;
+}
+const { background = 'clair', spacing = 'normal', id, surtitre, titre, intro, lien, largeur = 'normale', class: classe } = Astro.props;
+// Fond accent (orange) : textes bleu nuit, plus lisibles que le blanc sur l'orange
+const sombre = background === 'sombre' || background === 'sillage-sombre';
+const aEntete = surtitre || titre || intro || lien;
+---
+<section id={id} class:list={['section', `bg-${background}`, `sp-${spacing}`, sombre && 'on-dark', classe]}>
+  {background.startsWith('sillage') && <Sillage variante={background === 'sillage' ? 'clair' : 'sombre'} />}
+  <div class:list={[largeur !== 'pleine' && 'container', largeur === 'etroite' && 'container--narrow', 'section__inner']}>
+    {aEntete && (
+      <header class="entete">
+        <div class="entete__titres">
+          {surtitre && <p class="eyebrow">{surtitre}</p>}
+          {titre && <h2 class="h2">{titre}</h2>}
+        </div>
+        {intro && <p class="entete__intro">{intro}</p>}
+        {!intro && lien && <a class="link-more" href={lien.href} {...sortant(lien.href, Astro.site)}>{lien.label}</a>}
+      </header>
+    )}
+    <slot />
+    {intro && lien && <a class="link-more entete__lien-bas" href={lien.href} {...sortant(lien.href, Astro.site)}>{lien.label}</a>}
+  </div>
+</section>
+
+<style>
+  .section { padding-block: var(--section-y); }
+  .sp-compact { padding-block: var(--section-y-compact); }
+  .sp-large { padding-block: var(--section-y-large); }
+  .bg-clair { background: var(--c-surface); }
+  .bg-alt { background: var(--c-surface-alt); }
+  .bg-sombre { background: var(--c-surface-dark); color: var(--c-on-dark); }
+  .bg-accent { background: var(--c-surface-accent, var(--c-primary)); color: var(--c-ink, var(--c-text)); }
+  .bg-accent :global(.eyebrow) { color: var(--c-ink, var(--c-text)); font-weight: 700; }
+  .bg-accent :global(.btn--primaire) { background: var(--c-btn-sur-accent, var(--c-accent)); color: var(--c-btn-sur-accent-ink, var(--c-accent-ink)); }
+  .bg-sillage { background: var(--c-surface); position: relative; isolation: isolate; overflow: hidden; }
+  .bg-sillage-sombre { background: var(--c-surface-dark); color: var(--c-on-dark); position: relative; isolation: isolate; overflow: hidden; }
+  .bg-sillage > .section__inner, .bg-sillage-sombre > .section__inner { position: relative; z-index: 1; }
+  .section__inner { display: flex; flex-direction: column; gap: clamp(32px, 4vw, 56px); }
+  /* En-tête : titre à gauche, intro à droite (empilés sur mobile ou avec la classe entete-empile) */
+  .entete { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 18px clamp(32px, 5.5vw, 80px); align-items: end; }
+  .entete__titres { display: flex; flex-direction: column; gap: 18px; max-width: 820px; }
+  .entete__intro { font-size: var(--fs-xl); line-height: 1.6; color: var(--c-text-body); }
+  :global(.entete-empile) .entete { grid-template-columns: 1fr; max-width: 860px; }
+  :global(.entete-empile) .entete__intro { font-size: var(--fs-lg); }
+  .entete:has(.entete__titres:only-child) { grid-template-columns: 1fr; }
+  .on-dark .h2 { color: var(--c-on-dark); }
+  .on-dark .entete__intro { color: var(--c-on-dark-body); }
+  .on-dark .eyebrow { color: var(--c-on-dark-muted); }
+  .entete__lien-bas { align-self: flex-start; }
+</style>

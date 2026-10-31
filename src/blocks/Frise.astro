@@ -1,0 +1,39 @@
+---
+/** Frise chronologique : dates clés et palmarès (histoire du club, d'une association, d'une commune). */
+import Section from '../components/Section.astro';
+import Img from '../components/Img.astro';
+const { background, spacing, id, surtitre, titre, intro, items = [] } = Astro.props;
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <ol class="fr">
+    {items.map((it: any) => (
+      <li class="fr__item">
+        <p class="fr__annee">{it.annee}</p>
+        <div class="fr__corps">
+          <h3 class="fr__titre">{it.titre}</h3>
+          {it.texte && <p class="fr__texte">{it.texte}</p>}
+          {it.image && <div class="fr__image"><Img image={it.image} sizes="(min-width: 800px) 420px, 90vw" largeurs={[480, 800]} /></div>}
+        </div>
+      </li>
+    ))}
+  </ol>
+</Section>
+<style>
+  /* La colonne des dates prend la largeur du libellé le plus long (5.5em au moins, 9em au plus, puis retour à la ligne) :
+     « Débuts », « 2005-2008 » ou « Aujourd'hui » ne débordent plus sur la ligne. Toutes les lignes partagent la même
+     colonne (subgrid) ; le trait et les pastilles suivent son bord, quelle que soit sa largeur. */
+  .fr { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(5.5em, max-content) 1fr; row-gap: 28px; }
+  .fr__item { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; position: relative; }
+  .fr__annee { margin: 0; max-width: 9em; font-family: var(--font-title); font-size: 26px; font-weight: 700; line-height: 1.1; color: var(--c-text-strong); text-align: right; padding-right: 14px; overflow-wrap: break-word; }
+  .fr__corps { position: relative; padding-left: 42px; display: flex; flex-direction: column; gap: 6px; }
+  .fr__corps::before { content: ''; position: absolute; left: 0; top: 0; bottom: -28px; width: 3px; background: var(--c-accent); }
+  .fr__item:first-child .fr__corps::before { top: 6px; border-radius: 3px 3px 0 0; }
+  .fr__item:last-child .fr__corps::before { bottom: 6px; border-radius: 0 0 3px 3px; }
+  .fr__item:only-child .fr__corps::before { border-radius: 3px; }
+  .fr__corps::after { content: ''; position: absolute; left: -6px; top: 8px; width: 15px; height: 15px; border-radius: 50%; background: #fff; border: 3px solid var(--c-accent); }
+  .fr__titre { margin: 0; font-size: var(--fs-lg, 19px); color: var(--c-text-strong); }
+  .fr__texte { margin: 0; color: var(--c-text-body); }
+  .fr__image :global(img) { width: 100%; max-width: 420px; height: auto; border-radius: var(--radius-md); margin-top: 6px; }
+  :global(.on-dark) .fr__annee, :global(.on-dark) .fr__titre { color: #fff; }
+  :global(.on-dark) .fr__texte { color: var(--c-on-dark-body); }
+</style>

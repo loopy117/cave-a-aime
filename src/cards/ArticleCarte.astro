@@ -1,0 +1,39 @@
+---
+/** Carte d'article « À savoir » : visuel (facultatif), thème + date, titre, résumé. */
+import Img from '../components/Img.astro';
+import { urlElement } from '../lib/urls';
+import taxonomies from '../../data/taxonomies.json';
+const { element } = Astro.props;
+const d = element.data;
+const themes = ((taxonomies as any).themes ?? {}) as Record<string, string>;
+const theme = d.theme ? (themes[d.theme] ?? d.theme) : null;
+const date = d.date
+  ? new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(d.date))
+  : null;
+---
+<article class="art" data-theme={d.theme}>
+  {d.image && <div class="art__media"><Img image={d.image} sizes="(min-width: 1000px) 33vw, (min-width: 640px) 50vw, 100vw" largeurs={[480, 800, 1200]} /></div>}
+  <div class="art__corps">
+    <p class="art__meta">
+      {theme && <span class="art__theme">{theme}</span>}
+      {date && <time datetime={new Date(d.date).toISOString().slice(0, 10)}>{date}</time>}
+    </p>
+    <h3 class="art__titre"><a href={urlElement('articles', element.id)}>{d.titre}</a></h3>
+    {d.resume && <p class="art__resume">{d.resume}</p>}
+  </div>
+</article>
+<style>
+  .art { position: relative; height: 100%; display: flex; flex-direction: column; background: var(--c-surface); border: 1px solid var(--c-border-soft); border-radius: var(--radius-lg); overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+  .art:hover { box-shadow: 0 10px 30px rgb(0 0 0 / 0.08); border-color: var(--c-marque-2, var(--c-primary)); }
+  .art:has(a:focus-visible) { outline: 3px solid var(--c-link); outline-offset: 2px; }
+  .art__media :global(img) { width: 100%; height: 180px; object-fit: cover; object-position: top; display: block; }
+  .art__corps { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .art__meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12px; }
+  .art__theme { font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #fff; background: var(--c-marque-1, var(--c-primary)); border-radius: 999px; padding: 2px 10px; }
+  .art__meta time { color: var(--c-text-muted); }
+  .art__titre { margin: 2px 0 0; font-family: var(--font-title); font-size: 21px; line-height: 1.2; color: var(--c-text-strong); }
+  .art__titre a { color: inherit; text-decoration: none; }
+  .art__titre a:focus-visible { outline: none; }
+  .art__titre a::after { content: ''; position: absolute; inset: 0; }
+  .art__resume { margin: 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-body); }
+</style>

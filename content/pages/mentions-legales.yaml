@@ -1,0 +1,12 @@
+titre: Mentions légales
+statut: publie
+seo:
+  titre: "Mentions légales · La Cave à Aimé"
+  description: "Mentions légales du site de La Cave à Aimé : éditeur et directeur de la publication, création et hébergement du site, conditions d'utilisation des contenus."
+  noindex: true
+sections:
+  - block: hero
+    variant: minimal
+    titre: Mentions légales
+  - block: legal
+    variant: mentions

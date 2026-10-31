@@ -1,0 +1,42 @@
+---
+/** Exemple de bilan mensuel (sans chiffres inventés : l'évolution est montrée par une courbe). */
+const mois = new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date());
+---
+<figure class="bl" aria-label="Exemple de bilan mensuel">
+  <div class="bl__haut"><span class="bl__titre">Votre bilan de {mois}</span><span class="bl__ex">Exemple</span></div>
+  <div class="bl__stats">
+    {['Visites depuis Google', 'Affichages dans Google'].map((l, i) => (
+      <div class="bl__stat">
+        <span>{l}</span>
+        <svg viewBox="0 0 120 36" preserveAspectRatio="none" aria-hidden="true">
+          <polyline fill="none" stroke="var(--c-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points={i ? '0,30 20,28 40,24 60,25 80,16 100,12 120,6' : '0,32 20,29 40,30 60,22 80,20 100,13 120,8'} />
+        </svg>
+      </div>
+    ))}
+  </div>
+  <div class="bl__bloc">
+    <span class="bl__st">Ce qu'on a fait</span>
+    <p><span class="bl__coche" aria-hidden="true">✓</span>Page « Pompes à chaleur » : titre et présentation réécrits pour mieux répondre aux recherches</p>
+    <p><span class="bl__coche" aria-hidden="true">✓</span>Vos réalisations reliées aux pages de services correspondantes</p>
+  </div>
+  <div class="bl__bloc bl__bloc--sep">
+    <span class="bl__st">Proposé pour le mois prochain</span>
+    <p>Une page dédiée aux aides à la rénovation, souvent recherchée dans votre secteur.</p>
+    <span class="bl__bouton" aria-hidden="true">Valider la proposition</span>
+  </div>
+</figure>
+<style>
+  .bl { margin: 0; display: flex; flex-direction: column; gap: 22px; padding: clamp(24px, 2.5vw, 36px); border-radius: 24px; background: #fff; color: var(--c-ink); }
+  .bl__haut { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .bl__titre { font-family: var(--font-title); font-size: 26px; font-weight: 500; }
+  .bl__ex { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-muted); }
+  .bl__stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .bl__stat { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 14px; background: var(--c-surface-alt); font-size: 14px; color: var(--c-text-muted); }
+  .bl__stat svg { width: 100%; height: 36px; }
+  .bl__bloc { display: flex; flex-direction: column; gap: 12px; font-size: 16px; line-height: 1.5; color: var(--c-text-body); }
+  .bl__bloc p { display: flex; gap: 12px; }
+  .bl__bloc--sep { padding-top: 18px; border-top: 1px solid var(--c-border); }
+  .bl__st { font-size: 15px; font-weight: 600; color: var(--c-ink); }
+  .bl__coche { color: #17804B; font-weight: 600; }
+  .bl__bouton { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 99px; background: var(--c-primary); color: #fff; font-size: 15px; font-weight: 600; }
+</style>

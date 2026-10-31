@@ -1,0 +1,14 @@
+{
+  "fond": "#1C1712",
+  "fond2": "#3A2A1C",
+  "texte": "#F3E9DC",
+  "secondaire": "#D9C7AE",
+  "accent": "#D98E1F",
+  "police_titre": "@fontsource/fraunces/files/fraunces-latin-500-normal.woff",
+  "police_texte": "@fontsource/instrument-sans/files/instrument-sans-latin-600-normal.woff",
+  "logo": "data/partage/logo.svg",
+  "logo_hauteur": 64,
+  "titre_accueil": "Vins bio, fromages et bonnes choses, en quatre adresses",
+  "marge_app": 0,
+  "favicon_svg": false
+}

@@ -1,0 +1,39 @@
+---
+import Section from '../components/Section.astro';
+import Img from '../components/Img.astro';
+const { variant = 'grille', background, spacing, id, surtitre, titre, intro, images = [] } = Astro.props;
+// tirages : colonnes choisies pour éviter une photo seule sur la dernière ligne (6 → 3 × 2, 7-8 → 4 × 2)
+const n = images.length;
+const colonnes = n <= 5 ? n : n === 6 || n === 9 ? 3 : 4;
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <ul class:list={['gal', `gal--${variant}`]} style={variant === 'tirages' ? `--tirages-colonnes:${colonnes}` : undefined}>
+    {images.map((img: any) => <li><Img image={img} sizes="(min-width: 900px) 33vw, 90vw" largeurs={[480, 800, 1200]} /></li>)}
+  </ul>
+</Section>
+<style>
+  .gal { list-style: none; margin: 0; padding: 0; }
+  .gal :global(img) { width: 100%; border-radius: 14px; object-fit: cover; }
+  .gal--grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 12px; }
+  .gal--grille :global(img) { aspect-ratio: 4 / 3; }
+  .gal--mosaique { columns: 3 240px; column-gap: 12px; }
+  .gal--mosaique li { break-inside: avoid; margin-bottom: 12px; }
+  .gal--carrousel { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+  .gal--carrousel li { flex: 0 0 min(80%, 520px); scroll-snap-align: start; }
+  .gal--carrousel :global(img) { aspect-ratio: 3 / 2; }
+  /* tirages : photos posées comme des tirages papier à bord blanc, chacune un peu de travers */
+  .gal--tirages { display: grid; grid-template-columns: repeat(var(--tirages-colonnes, 4), minmax(0, 1fr)); gap: clamp(22px, 3vw, 40px) clamp(18px, 2.4vw, 32px); padding: 8px 4px 16px; align-items: start; }
+  .gal--tirages li { background: var(--c-tirage, #fff); padding: 10px 10px 34px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 14px 28px -16px rgb(0 0 0 / 0.38); rotate: -1.4deg; }
+  .gal--tirages li:nth-child(3n + 2) { rotate: 1.1deg; translate: 0 10px; }
+  .gal--tirages li:nth-child(3n) { rotate: -0.4deg; translate: 0 -6px; }
+  .gal--tirages li:nth-child(4n) { rotate: 1.8deg; }
+  .gal--tirages :global(img) { aspect-ratio: 4 / 5; border-radius: 0; }
+  .gal--tirages li:nth-child(odd) :global(img) { aspect-ratio: 1; }
+  @media (max-width: 900px) { .gal--tirages { grid-template-columns: repeat(min(var(--tirages-colonnes, 3), 3), minmax(0, 1fr)); } }
+  @media (max-width: 560px) {
+    .gal--tirages { grid-template-columns: 1fr 1fr; }
+    .gal--tirages li { padding: 6px 6px 20px; }
+    /* Nombre impair : la dernière photo, seule sur sa ligne, au centre */
+    .gal--tirages li:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 9px); }
+  }
+</style>

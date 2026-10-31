@@ -1,0 +1,108 @@
+---
+/**
+ * Images qui défilent en fondu (hero split). Accessible : pause visible, arrêt au survol et au focus,
+ * immobile si l'utilisateur réduit les animations, étapes cliquables, images inactives masquées aux lecteurs d'écran.
+ * Sans JavaScript : la première image et sa légende.
+ */
+import Img from './Img.astro';
+
+interface Vue { image: { src: string; alt: string; focus?: string }; legende: string }
+interface Props { vues: Vue[]; cadre?: 'telephone' | 'arrondi'; label?: string; priorite?: boolean }
+const { vues, cadre = 'telephone', label = 'Diaporama', priorite = false } = Astro.props;
+const tailles = cadre === 'telephone' ? '(min-width: 900px) 300px, 250px' : '(min-width: 900px) 50vw, 100vw';
+const largeurs = cadre === 'telephone' ? [320, 560, 780] : [480, 800, 1200, 1600];
+---
+<div class:list={['diapo', `diapo--${cadre}`]} data-diapo role="region" aria-roledescription="carrousel" aria-label={label}>
+  <div class="diapo__cadre">
+    {vues.map((v, i) => (
+      <figure class="diapo__vue" data-vue data-legende={v.legende} data-actif={i === 0 ? '' : undefined}
+        aria-roledescription="diapositive" aria-label={`${i + 1} sur ${vues.length}`} aria-hidden={i === 0 ? undefined : 'true'}>
+        <Img image={v.image} priorite={priorite && i === 0} sizes={tailles} largeurs={largeurs} />
+      </figure>
+    ))}
+  </div>
+  <div class="diapo__bas">
+    <p class="diapo__legende" data-legende-visible aria-live="off"><span class="diapo__num">1</span><span data-texte>{vues[0]?.legende}</span></p>
+    <div class="diapo__commandes">
+      <button type="button" class="diapo__pause" data-pause hidden aria-label="Mettre en pause le défilement">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path class="i-pause" d="M4 3h3v10H4zM9 3h3v10H9z" /><path class="i-lecture" d="M5 3l8 5-8 5z" /></svg>
+      </button>
+      <ol class="diapo__points">
+        {vues.map((v, i) => (
+          <li><button type="button" data-aller={i} aria-label={`Étape ${i + 1} : ${v.legende}`} aria-current={i === 0 ? 'step' : undefined}></button></li>
+        ))}
+      </ol>
+    </div>
+  </div>
+</div>
+
+<style>
+  .diapo { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .diapo__cadre { display: grid; width: 100%; }
+  .diapo__vue { grid-area: 1 / 1; margin: 0; opacity: 0; visibility: hidden; transition: opacity 0.7s ease, visibility 0s linear 0.7s; }
+  .diapo__vue[data-actif] { opacity: 1; visibility: visible; transition: opacity 0.7s ease, visibility 0s; }
+  .diapo .diapo__vue :global(img) { display: block; width: 100%; height: auto; object-fit: cover; }
+
+  .diapo--arrondi .diapo__vue :global(img) { aspect-ratio: 4 / 3; border-radius: var(--radius-xl); }
+  .diapo--telephone .diapo__cadre { width: min(300px, 68vw); padding: 9px; border-radius: 42px; background: oklch(0.2 0.02 255); box-shadow: 0 1px 0 1px oklch(1 0 0 / 0.08) inset, 0 30px 60px -18px oklch(0.2 0.03 255 / 0.45), 0 12px 24px -12px oklch(0.2 0.03 255 / 0.3); }
+  .diapo--telephone .diapo__vue { border-radius: 33px; overflow: hidden; background: #fff; }
+  .diapo.diapo--telephone .diapo__vue :global(img) { aspect-ratio: 1 / 2; object-position: top; }
+
+  .diapo__bas { display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 64px; }
+  .diapo__legende { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: var(--c-text); text-align: center; }
+  .diapo__num { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--c-primary); color: #fff; font-size: 12.5px; font-weight: 600; }
+  .diapo__commandes { display: flex; align-items: center; gap: 10px; }
+  .diapo__points { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
+  .diapo__points button { width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
+  .diapo__points button::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c-text-muted); opacity: 0.35; transition: opacity 0.2s, transform 0.2s; }
+  .diapo__points button[aria-current='step']::before { opacity: 1; background: var(--c-primary); transform: scale(1.25); }
+  .diapo__pause { width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 1px solid var(--c-border, currentColor); background: var(--c-surface, #fff); color: var(--c-text); cursor: pointer; display: grid; place-items: center; }
+  .diapo__pause[aria-pressed='true'] .i-pause, .diapo__pause:not([aria-pressed='true']) .i-lecture { display: none; }
+  .diapo button:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; border-radius: 50%; }
+  :global(.on-dark) .diapo__legende { color: var(--c-on-dark); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .diapo__vue, .diapo__vue[data-actif] { transition: none; }
+  }
+</style>
+
+<script>
+  const DUREE = 4200;
+  for (const d of document.querySelectorAll<HTMLElement>('[data-diapo]')) {
+    const vues = [...d.querySelectorAll<HTMLElement>('[data-vue]')];
+    const points = [...d.querySelectorAll<HTMLButtonElement>('[data-aller]')];
+    const legende = d.querySelector<HTMLElement>('[data-legende-visible]')!;
+    const pause = d.querySelector<HTMLButtonElement>('[data-pause]')!;
+    if (vues.length < 2) continue;
+    let i = 0, joue = !matchMedia('(prefers-reduced-motion: reduce)').matches, retenu = false, visible = true;
+    let minuteur: ReturnType<typeof setTimeout> | undefined;
+
+    const montrer = (n: number) => {
+      i = (n + vues.length) % vues.length;
+      vues.forEach((v, k) => { v.toggleAttribute('data-actif', k === i); v.setAttribute('aria-hidden', k === i ? 'false' : 'true'); });
+      points.forEach((p, k) => (k === i ? p.setAttribute('aria-current', 'step') : p.removeAttribute('aria-current')));
+      legende.querySelector('[data-texte]')!.textContent = vues[i].dataset.legende ?? '';
+      legende.firstElementChild!.textContent = String(i + 1);
+    };
+    const relancer = () => {
+      clearTimeout(minuteur);
+      if (joue && !retenu && visible && !document.hidden) minuteur = setTimeout(() => { montrer(i + 1); relancer(); }, DUREE);
+    };
+    const majPause = () => {
+      pause.setAttribute('aria-pressed', joue ? 'false' : 'true');
+      pause.setAttribute('aria-label', joue ? 'Mettre en pause le défilement' : 'Reprendre le défilement');
+      legende.setAttribute('aria-live', joue ? 'off' : 'polite');
+    };
+
+    pause.hidden = false; majPause();
+    pause.addEventListener('click', () => { joue = !joue; majPause(); if (joue) montrer(i + 1); relancer(); });
+    points.forEach((p, k) => p.addEventListener('click', () => { joue = false; majPause(); montrer(k); relancer(); }));
+    d.addEventListener('mouseenter', () => { retenu = true; relancer(); });
+    d.addEventListener('mouseleave', () => { retenu = d.contains(document.activeElement); relancer(); });
+    d.addEventListener('focusin', () => { retenu = true; relancer(); });
+    d.addEventListener('focusout', (e) => { retenu = d.contains(e.relatedTarget as Node) || d.matches(':hover'); relancer(); });
+    document.addEventListener('visibilitychange', relancer);
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; relancer(); }).observe(d);
+    relancer();
+  }
+</script>

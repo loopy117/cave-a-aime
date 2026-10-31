@@ -1,0 +1,28 @@
+---
+/** Image responsive : AVIF + WebP, plusieurs largeurs, dimensions explicites (spec §9). */
+import { Picture } from 'astro:assets';
+import { resoudreImage, positions } from '../lib/media';
+
+interface Props {
+  image: { src: string; alt: string; focus?: string };
+  sizes?: string;
+  priorite?: boolean;
+  class?: string;
+  largeurs?: number[];
+}
+const { image, sizes = '100vw', priorite = false, class: classe, largeurs = [480, 800, 1200, 1600, 2400] } = Astro.props;
+const meta = resoudreImage(image.src);
+const widths = largeurs.filter((w) => w <= meta.width);
+if (!widths.length) widths.push(meta.width);
+---
+<Picture
+  src={meta}
+  alt={image.alt}
+  formats={['avif', 'webp']}
+  widths={widths}
+  sizes={sizes}
+  loading={priorite ? 'eager' : 'lazy'}
+  fetchpriority={priorite ? 'high' : 'auto'}
+  class={classe}
+  style={`object-position:${positions[image.focus ?? 'centre']}`}
+/>

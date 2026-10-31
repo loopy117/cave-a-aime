@@ -1,0 +1,52 @@
+---
+/**
+ * Page de maintenance (/maintenance) : servie par le serveur à la place de toutes les pages quand le site est mis en
+ * maintenance (« sudo xm-site maintenance <nom> <IP autorisées…> »), avec le code 503. Les adresses autorisées voient
+ * le vrai site. Page autonome : ni menu ni liens internes (ils mèneraient tous ici), jamais indexée.
+ */
+import * as polices from '../site/polices';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import '../site/site.css';
+import Logo from '../partials/Logo.astro';
+import siteBrut from '../../data/site.json';
+const site = siteBrut as any;
+const prechargees = [...new Set([(polices as any).policeTitre, (polices as any).policeTexte].filter(Boolean))] as string[];
+const tel = site.telephone ? 'tel:+33' + site.telephone.replace(/\s/g, '').replace(/^0/, '') : '';
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{site.nom} · nouveau site en préparation</title>
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    {prechargees.map((p) => <link rel="preload" href={p} as="font" type="font/woff2" crossorigin />)}
+  </head>
+  <body class="maintenance">
+    <main class="maintenance__carte">
+      <Logo taille={34} variante="clair" />
+      <h1 class="maintenance__titre">Notre nouveau site arrive.</h1>
+      <p class="maintenance__texte">Nous mettons la dernière main à {site.nom}. Revenez dans quelques heures : tout sera en ligne.</p>
+      {(site.telephone || site.email) && (
+        <p class="maintenance__contact">
+          Besoin de nous joindre d'ici là ?
+          {site.telephone && <a href={tel}>{site.telephone}</a>}
+          {site.telephone && site.email && <span aria-hidden="true"> · </span>}
+          {site.email && <a href={`mailto:${site.email}`}>{site.email}</a>}
+        </p>
+      )}
+    </main>
+  </body>
+</html>
+
+<style>
+  .maintenance { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; background: var(--c-surface-alt); }
+  .maintenance__carte { max-width: 560px; display: grid; gap: 20px; justify-items: start; padding: clamp(28px, 6vw, 56px); border-radius: var(--radius-lg); background: var(--c-surface); box-shadow: 0 20px 60px -30px rgb(0 0 0 / .35); }
+  .maintenance__carte :global(.logo) { max-width: 100%; height: auto; }
+  .maintenance__titre { margin: 8px 0 0; font-size: clamp(30px, 6vw, 44px); line-height: 1.1; color: var(--c-ink, var(--c-text)); }
+  .maintenance__texte { margin: 0; font-size: var(--fs-lg); line-height: var(--lh-body); color: var(--c-text-body); }
+  .maintenance__contact { margin: 0; padding-top: 18px; border-top: 1px solid var(--c-border-soft); width: 100%; color: var(--c-text-muted); display: flex; flex-wrap: wrap; gap: 4px 8px; }
+  .maintenance__contact a { color: var(--c-link); font-weight: 600; }
+</style>

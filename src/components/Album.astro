@@ -1,0 +1,101 @@
+---
+/**
+ * Photos d'un album : vignettes (chargées au défilement), agrandies au clic dans une visionneuse accessible
+ * (<dialog> : clavier, Échap, flèches, légende et position annoncées). Sans JavaScript, chaque vignette ouvre
+ * la photo en grand. Les photos ne sont pas indexées par la recherche.
+ */
+import { getImage } from 'astro:assets';
+import Section from './Section.astro';
+import Img from './Img.astro';
+import { resoudreImage } from '../lib/media';
+interface Props { titre: string; photos: { src: string; alt: string; focus?: string; legende?: string }[]; credit?: string }
+const { titre, photos, credit } = Astro.props;
+const liste = await Promise.all(photos.map(async (p, i) => {
+  const meta = resoudreImage(p.src);
+  const grande = await getImage({ src: meta, width: Math.min(1600, meta.width), format: 'webp', quality: 82 });
+  return { ...p, alt: p.alt?.trim() || `${titre}, photo ${i + 1}`, grande: grande.src };
+}));
+---
+<Section titre={`Les photos (${liste.length})`} spacing="compact">
+  <ul class="alb" data-pagefind-ignore="all" data-album>
+    {liste.map((p, i) => (
+      <li>
+        <a href={p.grande} data-index={i} data-legende={p.legende ?? ''}>
+          <Img image={{ src: p.src, alt: p.alt, focus: p.focus }} sizes="(min-width: 1100px) 260px, (min-width: 640px) 33vw, 50vw" largeurs={[320, 480, 640]} />
+        </a>
+      </li>
+    ))}
+  </ul>
+  {credit && <p class="alb__credit">Photos : {credit}</p>}
+  <dialog class="vis" aria-label="Photo agrandie" data-visionneuse>
+    <figure class="vis__figure">
+      <img class="vis__img" alt="" />
+      <figcaption class="vis__legende"><span class="vis__position" aria-live="polite"></span> <span class="vis__texte"></span></figcaption>
+    </figure>
+    <div class="vis__boutons">
+      <button type="button" data-prec>‹ Précédente</button>
+      <button type="button" data-suiv>Suivante ›</button>
+      <button type="button" data-fermer class="vis__fermer">Fermer</button>
+    </div>
+  </dialog>
+</Section>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-album]').forEach((album) => {
+    const dialog = album.parentElement!.querySelector<HTMLDialogElement>('[data-visionneuse]')!;
+    const img = dialog.querySelector<HTMLImageElement>('.vis__img')!;
+    const pos = dialog.querySelector<HTMLElement>('.vis__position')!;
+    const texte = dialog.querySelector<HTMLElement>('.vis__texte')!;
+    const liens = [...album.querySelectorAll<HTMLAnchorElement>('a[data-index]')];
+    let courant = 0, origine: HTMLElement | null = null;
+    const montrer = (i: number) => {
+      courant = (i + liens.length) % liens.length;
+      const a = liens[courant];
+      const vignette = a.querySelector('img');
+      img.src = a.href;
+      img.alt = vignette?.alt ?? '';
+      pos.textContent = `Photo ${courant + 1} sur ${liens.length}.`;
+      texte.textContent = a.dataset.legende || '';
+      // Précharge la suivante
+      const s = liens[(courant + 1) % liens.length]; if (s) new Image().src = s.href;
+    };
+    liens.forEach((a, i) => a.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      origine = a;
+      montrer(i);
+      dialog.showModal();
+    }));
+    dialog.querySelector('[data-prec]')!.addEventListener('click', () => montrer(courant - 1));
+    dialog.querySelector('[data-suiv]')!.addEventListener('click', () => montrer(courant + 1));
+    dialog.querySelector('[data-fermer]')!.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('keydown', (ev) => {
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); montrer(courant - 1); }
+      if (ev.key === 'ArrowRight') { ev.preventDefault(); montrer(courant + 1); }
+    });
+    // Clic sur le fond : ferme
+    dialog.addEventListener('click', (ev) => { if (ev.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => { img.removeAttribute('src'); origine?.focus(); });
+    // Balayage sur mobile
+    let x0 = 0;
+    dialog.addEventListener('touchstart', (ev) => { x0 = ev.touches[0].clientX; }, { passive: true });
+    dialog.addEventListener('touchend', (ev) => { const dx = ev.changedTouches[0].clientX - x0; if (Math.abs(dx) > 50) montrer(courant + (dx < 0 ? 1 : -1)); });
+  });
+</script>
+<style>
+  .alb { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 220px), 1fr)); gap: 8px; }
+  .alb a { display: block; border-radius: 10px; overflow: hidden; }
+  .alb :global(img) { width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform .2s; }
+  .alb a:hover :global(img) { transform: scale(1.03); }
+  .alb__credit { font-size: 14px; color: var(--c-text-muted); }
+  .vis { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0; background: rgb(10 12 18 / 0.96); color: #fff; }
+  .vis[open] { display: flex; flex-direction: column; gap: 12px; }
+  .vis::backdrop { background: rgb(10 12 18 / 0.96); }
+  .vis__figure { flex: 1; min-height: 0; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  .vis__img { max-width: 100%; max-height: calc(100vh - 150px); object-fit: contain; border-radius: 6px; }
+  .vis__legende { font-size: 15px; text-align: center; max-width: 70ch; color: #e8eaf0; }
+  .vis__boutons { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .vis button { font: inherit; font-weight: 600; min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 2px solid #fff; background: transparent; color: #fff; cursor: pointer; }
+  .vis button:hover { background: rgb(255 255 255 / 0.12); }
+  .vis button:focus-visible { outline: 3px solid #ffd54a; outline-offset: 2px; }
+  .vis__fermer { background: #fff !important; color: #111 !important; }
+  @media (prefers-reduced-motion: reduce) { .alb :global(img) { transition: none; } .alb a:hover :global(img) { transform: none; } }
+</style>

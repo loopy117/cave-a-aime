@@ -1,0 +1,43 @@
+---
+/** Une demande dans l'espace client, de l'envoi à la mise en ligne (+ score PageSpeed s'il est connu). */
+import Anneau from './Anneau.astro';
+const { score_mobile } = Astro.props;
+const etapes = ['Demande reçue', 'Texte rédigé, photos optimisées, page référencée', 'Relue avant publication'];
+---
+<figure class="dm" aria-label="Exemple de demande dans votre espace client">
+  <div class="dm__carte">
+    <div class="dm__haut"><span>Votre espace · Nouvelle demande</span><span class="dm__heure">mardi 9 h 12</span></div>
+    <p class="dm__message">Ajoutez notre dernier chantier : isolation des combles d'une maison de village. Je joins 3 photos.</p>
+    <ul class="dm__pj" role="list">{[1, 2, 3].map((n) => <li>chantier-0{n}.jpg</li>)}</ul>
+    <ol class="dm__etapes" role="list">
+      {etapes.map((e) => (
+        <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M8 12.5l2.5 2.5L16 9.5" /></svg>{e}</li>
+      ))}
+      <li class="dm__fin"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--c-peche, #FFCFAE)" /><path d="M8 12.5l2.5 2.5L16 9.5" fill="none" stroke="var(--c-ink, #132A33)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>En ligne. Vous avez reçu un e-mail.</li>
+    </ol>
+  </div>
+  {score_mobile !== undefined && (
+    <div class="dm__score">
+      <Anneau score={score_mobile} />
+      <div><strong>Score de vitesse Google</strong><span>PageSpeed, sur mobile</span></div>
+    </div>
+  )}
+</figure>
+<style>
+  .dm { position: relative; margin: 0; }
+  .dm__carte { display: flex; flex-direction: column; gap: 20px; padding: clamp(24px, 2.5vw, 36px); border-radius: 28px; background: var(--c-primary); color: #fff; }
+  .dm__haut { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--c-on-dark-body, #E4EEF2); }
+  .dm__heure { font-family: var(--font-mono); }
+  .dm__message { padding: 22px 24px; border-radius: 18px; background: #fff; color: var(--c-ink); font-size: var(--fs-lg); line-height: 1.5; }
+  .dm__pj { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+  .dm__pj li { padding: 8px 14px; border-radius: 10px; background: #3F7589; font-size: 14px; }
+  .dm__etapes { list-style: none; margin: 0; padding: 18px 0 0; border-top: 1px solid #4F8497; display: flex; flex-direction: column; gap: 14px; font-size: 16px; }
+  .dm__etapes li { display: flex; align-items: center; gap: 14px; }
+  .dm__etapes svg { flex: none; color: var(--c-peche, #FFCFAE); }
+  .dm__fin { font-weight: 600; }
+  .dm__score { position: absolute; right: -28px; bottom: -36px; display: flex; align-items: center; gap: 14px; padding: 16px 22px; border-radius: 18px; background: #fff; color: var(--c-ink); border: 1px solid var(--c-border); }
+  .dm__score div { display: flex; flex-direction: column; gap: 2px; }
+  .dm__score strong { font-size: 15px; font-weight: 600; }
+  .dm__score span { font-size: 13px; color: var(--c-text-muted); }
+  @media (max-width: 1100px) { .dm__score { position: static; margin-top: 16px; align-self: flex-start; display: inline-flex; } }
+</style>

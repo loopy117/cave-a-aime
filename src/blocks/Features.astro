@@ -1,0 +1,93 @@
+---
+import { sortant, estExterne, NOUVEL_ONGLET } from '../lib/liens';
+import Section from '../components/Section.astro';
+import Icone from '../components/Icone.astro';
+import { composantsIllustrations } from '../illustrations';
+const { variant = 'grille-icones', background, spacing, id, surtitre, titre, intro, items = [], illustration } = Astro.props;
+const Balise = variant === 'etapes-numerotees' ? 'ol' : 'ul';
+const Illustration = illustration ? composantsIllustrations[illustration.nom as keyof typeof composantsIllustrations] : null;
+// Variante « paires » : items regroupés deux par carte
+const groupes: any[][] = variant === 'paires'
+  ? items.reduce((g: any[][], it: any, i: number) => (i % 2 ? g[g.length - 1].push(it) : g.push([it]), g), [])
+  : items.map((it: any) => [it]);
+// Titres des cartes : h3 sous le titre de la section, h2 si la section n'en a pas (hiérarchie sans saut, RGAA 9.1)
+const Titre = titre ? 'h3' : 'h2';
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <Balise class:list={['ft', `ft--${variant}`]}>
+    {Illustration && <li class="ft__illustration"><Illustration {...illustration} /></li>}
+    {groupes.map((g, gi) => (
+      <li class:list={['ft__item', g[0].mis_en_avant && variant !== 'liste' && 'ft__item--avant']}>
+        {g.map((it: any, k: number) => (
+          <>
+            {it.mis_en_avant && it.badge && <span class="ft__badge">{it.badge}</span>}
+            {variant === 'etapes-numerotees'
+              ? <span class="ft__num" aria-hidden="true">{gi + 1}</span>
+              : variant !== 'comparatif' && variant !== 'paires' && it.icone && <span class="ft__icone"><Icone nom={it.icone} taille={22} /></span>}
+            <div class="ft__corps">
+              {variant === 'comparatif'
+                ? <Titre class="ft__etiquette"><span class="ft__marque"><Icone nom={it.icone || (it.mis_en_avant ? 'check' : 'croix')} taille={it.mis_en_avant ? 18 : 16} /></span>{it.titre}</Titre>
+                : <Titre class="ft__titre">{it.titre}</Titre>}
+              {it.texte && <p class="ft__texte">{it.texte}</p>}
+              {it.lien && <a class="link-more" href={it.lien.href} {...sortant(it.lien.href, Astro.site)}>{it.lien.label}{estExterne(it.lien.href, Astro.site) && <Fragment set:html={NOUVEL_ONGLET} />}</a>}
+            </div>
+          </>
+        ))}
+      </li>
+    ))}
+  </Balise>
+</Section>
+<style>
+  .ft { list-style: none; margin: 0; padding: 0; display: grid; gap: 24px; }
+  .ft--grille-icones, .ft--comparatif, .ft--paires { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+  .ft--grille-icones .ft__item { border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+  .ft__illustration { min-width: 0; }
+
+  /* comparatif : cartes blanches, titre en petites capitales */
+  .ft--comparatif .ft__item { border-radius: var(--radius-lg); padding: 32px; background: var(--c-surface); display: flex; flex-direction: column; }
+  :global(.bg-clair) .ft--comparatif .ft__item:not(.ft__item--avant) { background: var(--c-surface-alt); }
+  .ft__etiquette { font-family: var(--font-sans); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-muted); }
+  .ft--comparatif .ft__corps { gap: 14px; }
+  .ft--comparatif .ft__texte { font-size: var(--fs-lg); line-height: 1.55; color: var(--c-text-body); }
+  .ft__item--avant .ft__etiquette { color: var(--c-peche, #fff); }
+  /* pastille devant l'étiquette : croix discrète sur les options comparées, coche orange sur la carte mise en avant */
+  .ft--comparatif { align-items: center; }
+  .ft--comparatif .ft__etiquette { display: flex; align-items: center; gap: 10px; }
+  .ft__marque { width: 26px; height: 26px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgb(19 42 51 / 0.07); color: var(--c-text-muted); }
+  /* carte mise en avant : plus haute, ombrée, nom en police de titre */
+  .ft--comparatif .ft__item--avant { padding: clamp(36px, 3.4vw, 48px) clamp(30px, 2.8vw, 40px); box-shadow: 0 22px 44px -18px rgb(19 42 51 / 0.55); }
+  .ft--comparatif .ft__item--avant .ft__etiquette { font-family: var(--font-title); font-size: 30px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--c-on-dark); }
+  .ft--comparatif .ft__item--avant .ft__marque { width: 32px; height: 32px; background: var(--c-accent); color: var(--c-accent-ink); }
+  .ft--comparatif .ft__item--avant .ft__texte { font-weight: 500; }
+  .ft--comparatif .ft__item--avant .ft__corps { gap: 18px; }
+
+  /* paires : deux arguments par carte, fond alterné */
+  .ft--paires .ft__item { display: flex; flex-direction: column; gap: 22px; padding: clamp(24px, 2.5vw, 36px); border-radius: var(--radius-xl); background: var(--c-surface-alt); }
+  :global(.bg-alt) .ft--paires .ft__item { background: var(--c-surface); }
+  .ft--paires .ft__titre { font-size: 20px; }
+  .ft--paires .ft__texte { font-size: var(--fs-md); }
+
+  /* étapes : trait au-dessus, grand chiffre */
+  .ft--etapes-numerotees { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 48px; counter-reset: none; }
+  .ft--etapes-numerotees .ft__item { display: flex; flex-direction: column; gap: 18px; padding-top: 28px; border-top: 2px solid var(--c-ink, var(--c-text)); }
+  .ft__num { font-family: var(--font-title); font-size: 64px; line-height: 1; color: var(--c-accent); }
+  .ft--etapes-numerotees .ft__corps { gap: 18px; }
+  .ft--etapes-numerotees .ft__titre { font-size: var(--fs-h3); }
+  .ft--etapes-numerotees .ft__texte { font-size: var(--fs-lg); line-height: 1.6; color: var(--c-text-body); }
+
+  .ft--liste { max-width: 820px; gap: 0; }
+  .ft--liste .ft__item { display: flex; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--c-border); }
+  .ft__icone { width: 44px; height: 44px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--c-surface-alt); color: var(--c-primary); }
+  /* Carte mise en avant : fond primaire, textes clairs */
+  .ft__item--avant { position: relative; background: var(--c-primary) !important; border-color: var(--c-primary) !important; }
+  .ft__item--avant .ft__titre { color: var(--c-on-dark); }
+  .ft__item--avant .ft__texte { color: var(--c-on-dark) !important; }
+  .ft__item--avant .ft__icone { background: rgb(255 255 255 / 0.12); color: var(--c-peche, #fff); }
+  .ft__badge { position: absolute; top: -12px; right: 18px; background: var(--c-accent); color: var(--c-accent-ink); font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: var(--radius-pill); }
+  .ft__corps { display: flex; flex-direction: column; gap: 6px; }
+  .ft__titre { font-family: var(--font-sans); font-size: var(--fs-lg); font-weight: 600; color: var(--c-text-strong); }
+  .ft__texte { font-size: var(--fs-md); line-height: 1.55; color: var(--c-text-body); }
+  :global(.on-dark) .ft__titre { color: var(--c-on-dark); }
+  :global(.on-dark) .ft__texte { color: var(--c-on-dark-body); }
+  :global(.on-dark) .ft__item { border-color: var(--c-border-dark); }
+</style>

@@ -1,0 +1,91 @@
+/* ==========================================================================
+   Design tokens — La Cave à Aimé
+   Seule source des valeurs visuelles. Les composants n'utilisent que ces
+   variables. L'IA ne modifie jamais ce fichier.
+   ========================================================================== */
+:root {
+  /* Couleurs de marque — La Cave à Aimé (vin, ambre) */
+  --c-ink:          #2B1D14;   /* bleu nuit : textes forts */
+  --c-primary:      #5B2A2E;   /* bleu acier : fonds sombres, formule mise en avant */
+  --c-primary-deep: #3B1C1F;   /* pied de page */
+  --c-accent:       #9C560B;   /* orange : boutons, bandeau audit (contraste 4,75:1 avec le blanc, RGAA) */
+  --c-accent-ink:   #FFFFFF;   /* texte blanc (en gras) sur l'accent */
+  --c-accent-text:  #8A4A08;   /* orange lisible sur fond clair (surtitres, liens) */
+  --c-peche:        #F2C98A;   /* surtitres et coches sur fond bleu */
+  --c-link:         #8A4A08;
+  --c-link-hover:   #5E3205;
+
+  /* Couleurs par métier (non utilisées sur Sillaya, gardées pour le gabarit) */
+  --c-clim:         #2F6478;
+  --c-pac:          #2F6478;
+  --c-elec:         #2F6478;
+  --c-solaire:      #E2561A;
+
+  /* Surfaces */
+  --c-surface:      #fff;
+  --c-surface-alt:  #F6EFE6;
+  --c-surface-dark: var(--c-primary);
+  --c-surface-accent: var(--c-accent);   /* fond « accent » : orange (bandeau audit) */
+  --c-btn-sur-accent: var(--c-ink);      /* bouton principal posé sur le fond orange */
+  --c-btn-sur-accent-ink: #FFFFFF;
+  --c-border:       #E6D9C8;
+  --c-border-soft:  #EFE5D8;
+  --c-border-dark:  #7A4447;
+
+  /* Textes */
+  --c-text:         #2B1D14;
+  --c-text-strong:  #2B1D14;
+  --c-text-body:    #3F362F;
+  --c-text-muted:   #5E544B;
+  --c-eyebrow:      var(--c-accent-text);
+  --c-on-dark:      #fff;
+  --c-on-dark-body: #E4EEF2;
+  --c-on-dark-muted:#C9DCE3;
+  --c-on-dark-line: #5B8A9B;
+
+  /* Typographie */
+  --font-sans: 'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif;
+  --font-title: 'Fraunces Variable', 'Fraunces', Georgia, serif;
+  --fw-title: 500;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* Échelle de la maquette Sillaya (grand confort de lecture) */
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-md: 17px;
+  --fs-lg: 19px;
+  --fs-xl: 21px;
+  --fs-h3: 26px;
+  --fs-h2: clamp(32px, 4.2vw, 54px);
+  --fs-h2-lg: clamp(34px, 4.6vw, 60px);
+  --fs-h1: clamp(42px, 5.8vw, 76px);
+  --lh-tight: 1.1;
+  --lh-body: 1.6;
+  --tracking-title: -0.02em;
+  --tracking-eyebrow: 0.12em;
+
+  /* Espacements et gabarit */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 44px;
+  --section-y: clamp(64px, 8.3vw, 120px);
+  --section-y-compact: clamp(44px, 5vw, 72px);
+  --section-y-large: clamp(72px, 9vw, 136px);
+  --gutter: clamp(16px, 6.7vw, 96px);
+  --container: 1440px;
+  --container-narrow: 760px;
+
+  /* Formes */
+  --radius-sm: 9px;
+  --radius-md: 11px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 99px;
+  --radius-btn: 99px;        /* boutons en pilule */
+}
+
+/* Couleur d'un élément selon son métier : data-metier="climatisation" etc. */
+[data-metier]                     { --metier: var(--c-primary); --metier-soft: oklch(0.95 0.02 160); --metier-ink: oklch(0.30 0.04 160); }
+[data-metier="climatisation"]     { --metier: var(--c-clim);    --metier-soft: oklch(0.95 0.02 200); --metier-ink: oklch(0.30 0.05 200); }
+[data-metier="pompe-a-chaleur"]   { --metier: var(--c-pac);     --metier-soft: oklch(0.96 0.03 130); --metier-ink: oklch(0.32 0.06 130); }
+[data-metier="electricite"]       { --metier: var(--c-elec);    --metier-soft: oklch(0.95 0.02 160); --metier-ink: oklch(0.30 0.04 160); }
+[data-metier="solaire"]           { --metier: var(--c-solaire); --metier-soft: oklch(0.96 0.03 125); --metier-ink: oklch(0.32 0.06 130); }

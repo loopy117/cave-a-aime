@@ -1,0 +1,112 @@
+---
+/**
+ * Note et derniers avis de la fiche Google (src/lib/avisGoogle.ts, actualisés chaque jour par l'agence).
+ * cartes : encadré de la note (avec « Donner votre avis ») et avis à côté ; un avis seul est mis en avant comme une
+ * citation. bandeau : la note sur une ligne. Sans données (fiche non reliée, aucun avis) : le bloc n'affiche rien.
+ * Google ne fournit que 5 avis au plus, et seulement ceux qui ont un texte sont montrés.
+ * Exigences de Google respectées : nom de l'auteur (lien vers son profil), mention Google, lien vers la fiche.
+ */
+import Section from '../components/Section.astro';
+import Etoiles from '../components/Etoiles.astro';
+import { ficheGoogle, noteFr, moisFr } from '../lib/avisGoogle';
+const { variant = 'cartes', background, spacing, id, surtitre, titre, intro, nombre = 3, note_min = 4 } = Astro.props;
+const f = ficheGoogle();
+const avis = f ? f.avis.filter((a) => a.note >= note_min).slice(0, nombre) : [];
+const montrer = f && (variant === 'bandeau' || avis.length > 0);
+const total = (n: number) => `${n.toLocaleString('fr-FR')} avis`;
+const seul = avis.length === 1;
+const large = avis.length >= 3;   // trois avis ou plus : la note en bandeau au-dessus, les avis sur une ligne
+---
+{montrer && f && variant === 'bandeau' && (
+<Section {background} {spacing} {id}>
+  <p class="ag-bandeau">
+    <span class="ag-bandeau__note">{noteFr(f.note)}</span>
+    <Etoiles note={f.note} taille={20} />
+    <a href={f.lien} target="_blank" rel="noopener">{total(f.nombre)} sur Google<span class="visually-hidden"> (nouvel onglet)</span></a>
+  </p>
+</Section>
+)}
+{montrer && f && variant === 'cartes' && (
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <div class:list={['ag', seul && 'ag--seul', large && 'ag--large']}>
+    <div class="ag__resume">
+      <p class="ag__label">Note Google</p>
+      <p class="ag__note"><span>{noteFr(f.note)}</span><span class="ag__sur">/5</span></p>
+      <Etoiles note={f.note} taille={24} />
+      <p class="ag__total">{total(f.nombre)} sur la fiche Google</p>
+      <div class="ag__actions">
+        {f.ecrire && <a class="btn btn--secondaire ag__btn" href={f.ecrire} target="_blank" rel="noopener">Donner votre avis<span class="visually-hidden"> sur Google (nouvel onglet)</span></a>}
+        <a class="ag__lire" href={f.lien} target="_blank" rel="noopener">Lire tous les avis<span class="visually-hidden"> sur Google (nouvel onglet)</span></a>
+      </div>
+    </div>
+    <ul class="ag__liste">
+      {avis.map((a) => (
+        <li class="ag__avis">
+          <svg class="ag__guillemet" viewBox="0 0 48 36" width="40" height="30" aria-hidden="true"><path d="M0 36V22C0 9.6 6.4 2.3 19.2 0l2 5.2C14 7.1 10.6 11 10.2 17H20v19H0zm28 0V22C28 9.6 34.4 2.3 47.2 0l2 5.2C42 7.1 38.6 11 38.2 17H48v19H28z" /></svg>
+          <Etoiles note={a.note} taille={seul ? 20 : 17} />
+          <blockquote class="ag__texte" cite={a.lien}><p>{a.texte}</p></blockquote>
+          <p class="ag__auteur">
+            <span class="ag__initiale" aria-hidden="true">{a.auteur.charAt(0).toUpperCase()}</span>
+            <span class="ag__qui">
+              {a.profil ? <a href={a.profil} target="_blank" rel="noopener nofollow">{a.auteur}<span class="visually-hidden"> (profil Google, nouvel onglet)</span></a> : <span>{a.auteur}</span>}
+              <span class="ag__date">{a.date && <><time datetime={a.date}>{moisFr(a.date)}</time> · </>}Avis Google</span>
+            </span>
+          </p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Section>
+)}
+<style>
+  .ag { display: grid; grid-template-columns: minmax(250px, 300px) 1fr; gap: clamp(20px, 3vw, 36px); align-items: start; }
+  .ag--seul { align-items: stretch; }
+  @media (max-width: 820px) { .ag { grid-template-columns: 1fr; } }
+
+  /* trois avis ou plus : bandeau de la note au-dessus, avis en colonnes égales */
+  .ag--large { grid-template-columns: 1fr; }
+  .ag--large .ag__resume { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 22px; padding: 22px clamp(22px, 3vw, 32px); }
+  .ag--large .ag__label { flex-basis: 100%; }
+  .ag--large .ag__note { margin: 0; }
+  .ag--large .ag__note span:first-child { font-size: clamp(42px, 4.5vw, 52px); }
+  .ag--large .ag__actions { margin: 0 0 0 auto; padding: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .ag--large .ag__liste { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+  @media (max-width: 820px) { .ag--large .ag__actions { margin-left: 0; flex-basis: 100%; } }
+
+  .ag__resume { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: clamp(24px, 3vw, 34px); border-radius: var(--radius-xl); background: var(--c-surface-alt); }
+  .ag__label { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-muted); }
+  .ag__note { margin: 4px 0 0; display: flex; align-items: baseline; gap: 4px; line-height: 1; color: var(--c-text); }
+  .ag__note span:first-child { font-size: clamp(52px, 6vw, 68px); font-weight: 700; letter-spacing: -0.03em; }
+  .ag__sur { font-size: 20px; font-weight: 600; color: var(--c-text-muted); }
+  .ag__total { margin: 0; color: var(--c-text-muted); font-size: 15px; }
+  .ag__actions { margin-top: auto; padding-top: 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .ag__btn { min-height: 48px; padding: 10px 22px; font-size: 15.5px; }
+  .ag__lire { font-size: 15px; }
+
+  .ag__liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 18px; }
+  .ag__avis { position: relative; display: flex; flex-direction: column; gap: 14px; padding: 28px 26px 24px; border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); }
+  .ag__guillemet { position: absolute; top: 22px; right: 24px; fill: var(--c-accent); opacity: 0.18; }
+  .ag__texte { margin: 0; flex: 1; }
+  .ag__texte p { margin: 0; color: var(--c-text-body, var(--c-text)); font-size: 16.5px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 7; line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+  .ag__auteur { margin: 0; display: flex; align-items: center; gap: 12px; }
+  .ag__qui { display: flex; flex-direction: column; gap: 2px; font-weight: 600; color: var(--c-text); }
+  .ag__qui a { color: inherit; }
+  .ag__initiale { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--c-primary); color: #fff; font-weight: 700; }
+  .ag__date { font-weight: 400; font-size: 13.5px; color: var(--c-text-muted); }
+
+  /* un seul avis : mis en avant comme une citation */
+  .ag--seul .ag__avis { justify-content: center; padding: clamp(28px, 4vw, 48px); gap: 18px; }
+  .ag--seul .ag__guillemet { position: static; width: 52px; height: 39px; opacity: 0.9; }
+  .ag--seul .ag__texte { flex: none; }
+  .ag--seul .ag__texte p { font-size: clamp(19px, 2vw, 23px); line-height: 1.5; color: var(--c-text); -webkit-line-clamp: 9; line-clamp: 9; }
+
+  .ag-bandeau { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 12px; }
+  .ag-bandeau__note { font-size: 26px; font-weight: 700; color: var(--c-text); }
+  .ag-bandeau a { color: var(--c-text-muted); font-size: 15px; }
+
+  :global(.on-dark) .ag__resume { background: oklch(1 0 0 / 0.07); }
+  :global(.on-dark) .ag__note, :global(.on-dark) .ag__qui, :global(.on-dark) .ag-bandeau__note { color: var(--c-on-dark); }
+  :global(.on-dark) .ag__total, :global(.on-dark) .ag__label, :global(.on-dark) .ag__sur, :global(.on-dark) .ag__date, :global(.on-dark) .ag-bandeau a { color: var(--c-on-dark-body); }
+  :global(.on-dark) .ag__avis { background: transparent; border-color: oklch(1 0 0 / 0.18); }
+  :global(.on-dark) .ag__texte p { color: var(--c-on-dark-body); }
+</style>

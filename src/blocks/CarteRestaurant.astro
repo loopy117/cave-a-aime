@@ -1,0 +1,304 @@
+---
+/**
+ * Carte d'un restaurant, alimentée par data/carte-restaurant.json (un seul endroit pour la carte).
+ * - Menus (permanents, du jour, d'événement) en cartes, puis rubriques et plats, prix alignés à droite.
+ * - Allergènes sous chaque plat (liste réglementaire) ; « Nous consulter » si non renseignés (signalé à la validation).
+ * - Filtre « Je suis allergique à… » : masque les plats qui contiennent l'allergène choisi (et signale ceux dont les
+ *   allergènes ne sont pas renseignés). Sans JavaScript, toute la carte reste lisible.
+ * - Menu du jour et menus d'événement : dates vérifiées à la construction (chaque nuit) et dans le navigateur.
+ * - Données structurées schema.org Menu (rubriques, plats, prix, régimes) pour Google.
+ */
+import Section from '../components/Section.astro';
+import Img from '../components/Img.astro';
+import {
+  carteRestaurant as schema, ALLERGENES, LIBELLES_ALLERGENES, LIBELLES_REGIMES, REGIMES_SCHEMA,
+  allergenesManquants, menuVisible, aujourdhuiParis, prixFr, type Plat,
+} from '../schemas/carte-restaurant';
+import { uidPage } from '../lib/uid';
+import { jsonLd } from '../lib/jsonld';
+
+const { background, spacing, id, surtitre, titre, intro, afficher = 'tout', rubriques: filtreRubriques, filtre_allergenes: filtre = true, style = 'liste' } = Astro.props;
+const fichiers = import.meta.glob('../../data/carte-restaurant.json', { eager: true, import: 'default' });
+const brut = Object.values(fichiers)[0];
+if (!brut) throw new Error('bloc carte-restaurant : data/carte-restaurant.json absent');
+const c = schema.parse(brut);
+const uid = uidPage(Astro.locals, 'cr');
+
+const auj = aujourdhuiParis();
+const demain = aujourdhuiParis(new Date(Date.now() + 86_400_000));
+// Menus gardés : visibles aujourd'hui ou demain (la page est reconstruite chaque nuit ; le navigateur affiche le bon)
+const menus = afficher === 'carte' ? [] : c.menus.filter((m) => menuVisible(m, auj) || menuVisible(m, demain));
+const rubriques = afficher === 'menus' ? [] : c.rubriques.filter((r) => !filtreRubriques?.length || (r.titre && filtreRubriques.includes(r.titre)));
+// Carte sans aucun allergène renseigné : pas de « nous consulter » sous chaque plat (la mention générale suffit)
+const aucunRenseigne = rubriques.every((r) => r.plats.every((p) => allergenesManquants(p)));
+const presents = ALLERGENES.filter((a) => rubriques.some((r) => r.plats.some((p) => p.allergenes?.includes(a))));
+const ancre = (i: number) => `${uid}-r${i}`;
+
+const prixPlat = (p: Plat) => (p.variantes?.length ? null : p.prix !== undefined ? prixFr(p.prix) : null);
+const offres = (p: Plat) => p.variantes?.length
+  ? p.variantes.map((v) => ({ '@type': 'Offer', name: v.libelle, price: v.prix, priceCurrency: 'EUR' }))
+  : p.prix !== undefined ? { '@type': 'Offer', price: p.prix, priceCurrency: 'EUR' } : undefined;
+const jsonld = {
+  '@context': 'https://schema.org', '@type': 'Menu', name: c.titre, inLanguage: 'fr',
+  ...(rubriques.length ? {
+    hasMenuSection: rubriques.map((r) => ({
+      '@type': 'MenuSection', name: r.titre ?? c.titre, ...(r.note ? { description: r.note } : {}),
+      hasMenuItem: r.plats.filter((p) => !p.epuise).map((p) => ({
+        '@type': 'MenuItem', name: p.nom, ...(p.description ? { description: p.description } : {}),
+        ...(offres(p) ? { offers: offres(p) } : {}),
+        ...(p.regimes?.length ? { suitableForDiet: p.regimes.map((x) => REGIMES_SCHEMA[x]) } : {}),
+      })),
+    })),
+  } : {}),
+};
+const dateFr = (iso: string) => new Date(iso + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+---
+<Section {background} {spacing} {id} {surtitre} {titre} {intro}>
+  <div class:list={['cr', style === 'ardoise' && 'cr--ardoise']} id={uid} data-carte-restaurant>
+    {menus.length > 0 && (
+      <div class="cr__menus">
+        {menus.map((m) => (
+          <article class:list={['cr__menu', `cr__menu--${m.type}`]} data-type={m.type} data-date={m.date} data-du={m.du} data-au={m.au} hidden={!menuVisible(m, auj)}>
+            {m.type === 'du-jour' && <p class="cr__badge">Aujourd'hui{m.date && <span class="visually-hidden">, {dateFr(m.date)}</span>}</p>}
+            {m.type === 'evenement' && <p class="cr__badge">{m.quand ?? (m.au ? `Jusqu'au ${dateFr(m.au)}` : 'Événement')}</p>}
+            <h3 class="cr__menu-titre">{m.titre}</h3>
+            {m.prix !== undefined && <p class="cr__menu-prix">{prixFr(m.prix)}</p>}
+            {m.type !== 'evenement' && m.quand && <p class="cr__quand">{m.quand}</p>}
+            {m.description && <p class="cr__menu-desc">{m.description}</p>}
+            {m.composition?.length && (
+              <div class="cr__compo">
+                {m.composition.map((g) => (
+                  <div>
+                    {g.titre && <p class="cr__compo-titre">{g.titre}</p>}
+                    <ul>{g.choix.map((x) => <li>{x}</li>)}</ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    )}
+
+    {rubriques.length > 0 && (
+      <>
+        {(rubriques.length > 2 || (filtre && presents.length > 0)) && (
+          <div class="cr__outils">
+            {rubriques.length > 2 && (
+              <nav class="cr__sommaire" aria-label="Rubriques de la carte">
+                {rubriques.map((r, i) => r.titre && <a href={`#${ancre(i)}`}>{r.titre}</a>)}
+              </nav>
+            )}
+            {filtre && presents.length > 0 && (
+              <details class="cr__filtre" data-filtre hidden>
+                <summary>Je suis allergique à…</summary>
+                <fieldset>
+                  <legend class="visually-hidden">Masquer les plats qui contiennent</legend>
+                  {presents.map((a) => <label><input type="checkbox" value={a} /> {LIBELLES_ALLERGENES[a]}</label>)}
+                </fieldset>
+                <p class="cr__filtre-etat" aria-live="polite"></p>
+              </details>
+            )}
+          </div>
+        )}
+
+        {rubriques.map((r, i) => (
+          <section class="cr__rubrique" id={ancre(i)} aria-labelledby={r.titre ? `${ancre(i)}-t` : undefined}>
+            {r.titre && <h3 class="cr__rubrique-titre" id={`${ancre(i)}-t`}>{r.titre}</h3>}
+            {r.note && <p class="cr__note">{r.note}</p>}
+            <ul class="cr__plats">
+              {r.plats.map((p) => (
+                <li class:list={['cr__plat', p.epuise && 'cr__plat--epuise', p.photo && 'cr__plat--photo']}
+                    data-allergenes={(p.allergenes ?? []).join(' ')} data-inconnu={allergenesManquants(p) ? '' : undefined}>
+                  <div class="cr__plat-corps">
+                    <p class="cr__ligne">
+                      <span class="cr__nom">{p.nom}</span>
+                      {p.epuise && <span class="cr__epuise">Épuisé</span>}
+                      {prixPlat(p) && <span class="cr__points" aria-hidden="true"></span>}
+                      {prixPlat(p) && <span class="cr__prix">{prixPlat(p)}</span>}
+                    </p>
+                    {p.description && <p class="cr__desc">{p.description}</p>}
+                    {p.variantes?.length && (
+                      <p class="cr__variantes">{p.variantes.map((v) => <span>{v.libelle} <strong>{prixFr(v.prix)}</strong></span>)}</p>
+                    )}
+                    {(p.regimes?.length || p.fait_maison || p.nouveau) && (
+                      <p class="cr__tags">
+                        {p.nouveau && <span class="cr__tag cr__tag--nouveau">Nouveau</span>}
+                        {p.fait_maison && <span class="cr__tag">Fait maison</span>}
+                        {p.regimes?.map((x) => <span class="cr__tag cr__tag--regime">{LIBELLES_REGIMES[x]}</span>)}
+                      </p>
+                    )}
+                    {!(aucunRenseigne && allergenesManquants(p)) && <p class="cr__allergenes">
+                      {p.sans_allergene ? 'Aucun des 14 allergènes réglementaires'
+                        : p.allergenes?.length ? <>Allergènes : {p.allergenes.map((a) => LIBELLES_ALLERGENES[a]).join(', ')}</>
+                        : 'Allergènes : nous consulter'}
+                    </p>}
+                  </div>
+                  {p.photo && <Img image={p.photo} class="cr__photo" sizes="112px" largeurs={[224, 336]} />}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </>
+    )}
+
+    <div class="cr__mentions">
+      <p>{c.mention}</p>
+      {rubriques.length > 0 && <p>{c.mention_allergenes}</p>}
+    </div>
+  </div>
+  {rubriques.length > 0 && <script type="application/ld+json" set:html={jsonLd(jsonld)} />}
+</Section>
+
+<script>
+  const jour = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  for (const racine of document.querySelectorAll<HTMLElement>('[data-carte-restaurant]')) {
+    // Menus datés : affichés le bon jour, même si la page date de la veille
+    const auj = jour();
+    for (const m of racine.querySelectorAll<HTMLElement>('.cr__menu')) {
+      const { type, date, du, au } = m.dataset;
+      const visible = type === 'du-jour' ? date === auj : type === 'evenement' ? (!du || du <= auj) && (!au || auj <= au) : true;
+      m.hidden = !visible;
+    }
+    // Filtre allergènes
+    const filtre = racine.querySelector<HTMLDetailsElement>('[data-filtre]');
+    if (!filtre) continue;
+    filtre.hidden = false;
+    const cases = [...filtre.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    const etat = filtre.querySelector<HTMLElement>('.cr__filtre-etat')!;
+    const plats = [...racine.querySelectorAll<HTMLElement>('.cr__plat')];
+    const appliquer = () => {
+      const choisis = cases.filter((x) => x.checked).map((x) => x.value);
+      let masques = 0;
+      for (const p of plats) {
+        const contient = (p.dataset.allergenes || '').split(' ').filter(Boolean);
+        const masquer = choisis.some((a) => contient.includes(a));
+        p.hidden = masquer;
+        p.classList.toggle('cr__plat--a-verifier', choisis.length > 0 && p.dataset.inconnu !== undefined);
+        if (masquer) masques++;
+      }
+      for (const r of racine.querySelectorAll<HTMLElement>('.cr__rubrique')) {
+        r.hidden = [...r.querySelectorAll<HTMLElement>('.cr__plat')].every((p) => p.hidden);
+      }
+      etat.textContent = choisis.length
+        ? `${masques} plat${masques > 1 ? 's' : ''} masqué${masques > 1 ? 's' : ''}. Les plats marqués « à vérifier » n'ont pas leurs allergènes indiqués : demandez à l'équipe.`
+        : '';
+    };
+    cases.forEach((x) => x.addEventListener('change', appliquer));
+  }
+</script>
+
+<style>
+  .cr { display: grid; gap: clamp(28px, 4vw, 44px); }
+  .cr [hidden] { display: none !important; }
+
+  /* Menus */
+  .cr__menus { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 18px; }
+  .cr__menu { display: flex; flex-direction: column; gap: 8px; padding: 26px; border-radius: var(--radius-lg); background: var(--c-surface); border: 1px solid var(--c-border); }
+  :global(.bg-alt) .cr__menu { background: #fff; }
+  .cr__menu--du-jour, .cr__menu--evenement { border-color: var(--c-accent); box-shadow: 0 16px 36px -24px rgb(15 42 51 / .45); }
+  .cr__badge { align-self: flex-start; margin: 0 0 4px; padding: 4px 12px; border-radius: 999px; background: var(--c-accent); color: var(--c-accent-ink, #fff); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .cr__menu-titre { margin: 0; font-family: var(--font-title, inherit); font-size: var(--fs-h3, 1.4rem); color: var(--c-ink); }
+  .cr__menu-prix { margin: 0; font-size: clamp(26px, 3vw, 32px); font-weight: 700; color: var(--c-ink); font-variant-numeric: tabular-nums; }
+  .cr__quand { margin: 0; font-weight: 600; color: var(--c-text-muted); font-size: var(--fs-sm); }
+  .cr__menu-desc { margin: 0; color: var(--c-text-body); }
+  .cr__compo { display: grid; gap: 12px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--c-border-soft, var(--c-border)); }
+  .cr__compo-titre { margin: 0 0 4px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-text-muted); }
+  .cr__compo ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+  .cr__compo li + li::before { content: 'ou '; color: var(--c-text-muted); font-style: italic; }
+
+  /* Sommaire et filtre */
+  .cr__outils { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-start; justify-content: space-between; }
+  .cr__sommaire { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cr__sommaire a { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--c-border); color: var(--c-ink); font-weight: 600; font-size: var(--fs-sm); text-decoration: none; }
+  .cr__sommaire a:hover { background: var(--c-surface-alt); }
+  .cr__filtre { border: 1px solid var(--c-border); border-radius: var(--radius-md, 12px); padding: 10px 16px; background: var(--c-surface); max-width: 520px; }
+  .cr__filtre summary { cursor: pointer; font-weight: 600; color: var(--c-ink); }
+  .cr__filtre fieldset { border: 0; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .cr__filtre label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer; }
+  .cr__filtre input { width: 18px; height: 18px; accent-color: var(--c-accent); }
+  .cr__filtre-etat:empty { display: none; }
+  .cr__filtre-etat { margin: 10px 0 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
+
+  /* Rubriques et plats */
+  .cr__rubrique { scroll-margin-top: 100px; }
+  .cr__rubrique-titre { margin: 0 0 6px; font-family: var(--font-title, inherit); font-size: var(--fs-h3, 1.5rem); color: var(--c-ink); padding-bottom: 10px; border-bottom: 2px solid var(--c-ink); }
+  .cr__note { margin: 8px 0 0; font-style: italic; color: var(--c-text-muted); }
+  .cr__plats { list-style: none; margin: 0; padding: 0; }
+  /* Grand écran : plats sur deux colonnes (la carte reste courte à parcourir) */
+  @media (min-width: 1024px) { .cr__plats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; } }
+  .cr__plat { display: flex; gap: 16px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--c-border-soft, var(--c-border)); }
+  .cr__plat-corps { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .cr__ligne { margin: 0; display: flex; align-items: baseline; gap: 10px; }
+  .cr__nom { font-weight: 700; color: var(--c-ink); font-size: var(--fs-md, 1.05rem); }
+  .cr__points { flex: 1; min-width: 20px; border-bottom: 1px dotted var(--c-border); transform: translateY(-4px); }
+  .cr__prix { font-weight: 700; color: var(--c-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cr__variantes { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: var(--fs-sm); color: var(--c-text-body); }
+  .cr__variantes strong { color: var(--c-ink); font-variant-numeric: tabular-nums; }
+  .cr__desc { margin: 0; color: var(--c-text-body); line-height: 1.5; }
+  .cr__tags { margin: 2px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .cr__tag { padding: 2px 9px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; background: var(--c-surface-alt); color: var(--c-ink); }
+  .cr__tag--regime { background: #E3F4E8; color: #14532D; }
+  .cr__tag--nouveau { background: var(--c-accent); color: var(--c-accent-ink, #fff); }
+  .cr__allergenes { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); }
+  .cr__plat--epuise .cr__nom, .cr__plat--epuise .cr__prix { text-decoration: line-through; opacity: .6; }
+  .cr__epuise { font-size: var(--fs-xs); font-weight: 700; color: #B42318; text-transform: uppercase; letter-spacing: .05em; }
+  .cr__plat--a-verifier .cr__allergenes { color: #B54708; font-weight: 700; }
+  .cr__plat--a-verifier .cr__allergenes::after { content: ' · à vérifier'; }
+  .cr :global(.cr__photo) { width: 112px; height: 84px; object-fit: cover; border-radius: 10px; flex: none; }
+  @media (max-width: 520px) { .cr :global(.cr__photo) { width: 84px; height: 66px; } }
+
+  .cr__mentions { display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--c-text-muted); }
+  .cr__mentions p { margin: 0; }
+
+  /* ---- Style « ardoise » : la carte écrite à la craie sur une ardoise ----
+     Couleurs et police réglables par le site : --c-ardoise, --c-craie, --c-craie-accent, --font-craie. */
+  .cr--ardoise {
+    --craie: var(--c-craie, #F1EEE4);
+    --craie-pale: color-mix(in srgb, var(--craie) 72%, transparent);
+    --craie-trait: color-mix(in srgb, var(--craie) 28%, transparent);
+    position: relative; isolation: isolate;
+    padding: clamp(32px, 5vw, 72px) clamp(20px, 5.5vw, 80px) clamp(28px, 4vw, 56px);
+    border-radius: var(--radius-md, 6px);
+    background-color: var(--c-ardoise, #2A3230);
+    background-image:
+      radial-gradient(ellipse 60% 45% at 18% 12%, rgb(255 255 255 / 0.07), transparent),
+      radial-gradient(ellipse 50% 40% at 82% 88%, rgb(255 255 255 / 0.05), transparent),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    box-shadow: 0 2px 0 rgb(0 0 0 / 0.25), 0 30px 60px -30px rgb(0 0 0 / 0.55);
+    color: var(--craie);
+  }
+  /* Filet de craie tracé à quelques millimètres du bord */
+  .cr--ardoise::before { content: ''; position: absolute; inset: 12px; z-index: -1; border: 1.5px solid var(--craie-trait); border-radius: 3px; pointer-events: none; }
+  .cr--ardoise .cr__rubrique-titre {
+    margin: 0 0 4px; padding: 0; border: 0; text-align: center;
+    font-family: var(--font-craie, var(--font-title)); font-weight: var(--fw-craie, 600); font-style: normal;
+    font-size: clamp(32px, 3.6vw, 46px); line-height: 1.1; color: var(--craie);
+  }
+  .cr--ardoise .cr__rubrique-titre::after { content: ''; display: block; width: 72px; height: 2px; margin: 10px auto 0; background: var(--craie-trait); border-radius: 2px; rotate: -1.5deg; }
+  .cr--ardoise .cr__rubrique + .cr__rubrique { margin-top: clamp(8px, 1.5vw, 20px); }
+  .cr--ardoise .cr__note { text-align: center; color: var(--craie-pale); }
+  .cr--ardoise .cr__plat { border-bottom: 0; padding: 14px 0; }
+  .cr--ardoise .cr__nom { color: var(--craie); font-weight: 600; }
+  .cr--ardoise .cr__prix { font-family: var(--font-craie, inherit); font-size: 1.6em; font-weight: var(--fw-craie, 600); line-height: 0.8; color: var(--c-craie-accent, var(--craie)); }
+  .cr--ardoise .cr__points { border-bottom: 2px dotted var(--craie-trait); }
+  .cr--ardoise .cr__desc, .cr--ardoise .cr__variantes, .cr--ardoise .cr__allergenes { color: var(--craie-pale); }
+  .cr--ardoise .cr__variantes strong { color: var(--craie); }
+  .cr--ardoise .cr__tag { background: transparent; border: 1px solid var(--craie-trait); color: var(--craie-pale); }
+  .cr--ardoise .cr__tag--nouveau { border-color: var(--c-craie-accent, var(--craie)); color: var(--c-craie-accent, var(--craie)); }
+  .cr--ardoise .cr__outils { justify-content: center; }
+  .cr--ardoise .cr__sommaire { justify-content: center; }
+  .cr--ardoise .cr__sommaire a { border-color: var(--craie-trait); color: var(--craie); }
+  .cr--ardoise .cr__sommaire a:hover { background: rgb(255 255 255 / 0.08); }
+  .cr--ardoise .cr__sommaire a:focus-visible { outline: 2px solid var(--craie); outline-offset: 2px; }
+  .cr--ardoise .cr__filtre { background: transparent; border-color: var(--craie-trait); }
+  .cr--ardoise .cr__filtre summary, .cr--ardoise .cr__filtre label { color: var(--craie); }
+  .cr--ardoise .cr__filtre-etat { color: var(--craie-pale); }
+  .cr--ardoise .cr__menu { background: transparent; border: 1.5px dashed var(--craie-trait); box-shadow: none; }
+  .cr--ardoise .cr__menu-titre, .cr--ardoise .cr__menu-prix { color: var(--craie); }
+  .cr--ardoise .cr__menu-prix { font-family: var(--font-craie, inherit); }
+  .cr--ardoise .cr__quand, .cr--ardoise .cr__menu-desc, .cr--ardoise .cr__compo-titre, .cr--ardoise .cr__compo li + li::before { color: var(--craie-pale); }
+  .cr--ardoise .cr__compo { border-top-color: var(--craie-trait); }
+  .cr--ardoise .cr__mentions { text-align: center; color: var(--craie-pale); padding-top: 8px; }
+</style>

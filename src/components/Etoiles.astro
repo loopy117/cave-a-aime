@@ -1,0 +1,20 @@
+---
+/** Cinq étoiles remplies selon la note (au dixième), annoncées « Note : 4,8 sur 5 ». */
+import { noteFr, idEtoiles } from '../lib/avisGoogle';
+interface Props { note: number; taille?: number; class?: string }
+const { note, taille = 18, class: classe } = Astro.props;
+const uid = idEtoiles();
+const remplissage = (i: number) => Math.max(0, Math.min(1, note - i)) * 100;
+const etoile = 'M12 2.6l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z';
+---
+<span class:list={['etoiles', classe]} role="img" aria-label={`Note : ${noteFr(note)} sur 5`}>
+  {[0, 1, 2, 3, 4].map((i) => (
+    <svg viewBox="0 0 24 24" width={taille} height={taille} aria-hidden="true">
+      <defs><linearGradient id={`${uid}-${i}`}><stop offset={`${remplissage(i)}%`} stop-color="var(--c-etoile, #f4b400)" /><stop offset={`${remplissage(i)}%`} stop-color="var(--c-etoile-vide, #d5d9de)" /></linearGradient></defs>
+      <path d={etoile} fill={`url(#${uid}-${i})`} />
+    </svg>
+  ))}
+</span>
+<style>
+  .etoiles { display: inline-flex; gap: 1px; vertical-align: middle; line-height: 0; }
+</style>

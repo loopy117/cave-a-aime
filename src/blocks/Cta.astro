@@ -1,0 +1,68 @@
+---
+import Section from '../components/Section.astro';
+import Boutons from '../components/Boutons.astro';
+import Icone from '../components/Icone.astro';
+import Img from '../components/Img.astro';
+const { variant = 'carte', background = 'clair', spacing, id, icone, titre, texte, ctas = [], note, image } = Astro.props;
+---
+{variant === 'bandeau' && (
+  <Section {background} {spacing} {id}>
+    <div class="cta-bandeau">
+      <div class="cta-bandeau__texte">
+        {icone && <span class:list={['cta-bandeau__icone', icone === 'eclair' && 'cta-bandeau__icone--plein']}><Icone nom={icone} taille={24} /></span>}
+        <div class="cta__col">
+          <h2 class="cta-bandeau__titre">{titre}</h2>
+          {texte && <p class="cta-bandeau__sous">{texte}</p>}
+        </div>
+      </div>
+      <div class="cta__col"><Boutons ctas={ctas} />{note && <p class="cta__note">{note}</p>}</div>
+    </div>
+  </Section>
+)}
+{variant === 'carte' && (
+  <Section {background} {spacing} {id}>
+    <div class="cta-carte on-dark">
+      <div class="cta__col cta-carte__texte">
+        <h2 class="cta-carte__titre">{titre}</h2>
+        {texte && <p class="cta-carte__sous">{texte}</p>}
+      </div>
+      <div class="cta__col cta__col--centre"><Boutons ctas={ctas} />{note && <p class="cta__note">{note}</p>}</div>
+    </div>
+  </Section>
+)}
+{variant === 'split-image' && image && (
+  <Section {background} {spacing} {id}>
+    <div class="cta-split on-dark">
+      <div class="cta__col cta-split__texte">
+        <h2 class="cta-carte__titre">{titre}</h2>
+        {texte && <p class="cta-carte__sous">{texte}</p>}
+        <Boutons ctas={ctas} />
+        {note && <p class="cta__note">{note}</p>}
+      </div>
+      <div class="cta-split__media"><Img image={image} sizes="(min-width: 900px) 50vw, 100vw" largeurs={[480, 800, 1200, 1600]} /></div>
+    </div>
+  </Section>
+)}
+<style>
+  .cta__col { display: flex; flex-direction: column; gap: 10px; }
+  .cta__col--centre { align-items: center; }
+  .cta__note { font-size: 14px; color: #fff; text-align: center; }
+  .cta-bandeau { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between; }
+  .cta-bandeau__texte { display: flex; align-items: center; gap: 18px; }
+  .cta-bandeau__icone { width: 52px; height: 52px; flex: none; border-radius: var(--radius-icone, 14px); background: var(--c-accent); color: var(--c-accent-ink); display: grid; place-items: center; }
+  .cta-bandeau__icone--plein :global(svg) { fill: currentColor; stroke: none; }
+  .cta-bandeau__titre { font-size: var(--fs-h3); font-weight: 700; letter-spacing: -0.01em; color: var(--c-text); }
+  .cta-bandeau__sous { font-size: 15px; color: var(--c-text-muted); }
+  :global(.on-dark) .cta-bandeau__titre { color: #fff; }
+  :global(.on-dark) .cta-bandeau__sous { color: var(--c-on-dark-body, #E4EEF2); }   /* couleur du site pour le texte sur fond sombre (contraste ≥ 4,5:1) */
+  .cta-bandeau :global(.btn--primaire:first-child) { font-size: 17px; font-weight: 700; }
+  .cta-carte { background: var(--c-primary); border-radius: var(--radius-xl); padding: 44px; display: flex; flex-wrap: wrap; gap: 28px; align-items: center; justify-content: space-between; }
+  .cta-carte__texte { gap: 12px; max-width: 620px; }
+  .cta-carte__titre { font-size: var(--fs-h2-lg); font-weight: 700; letter-spacing: var(--tracking-title); line-height: var(--lh-tight); color: #fff; }
+  .cta-carte__sous { font-size: 17px; line-height: 1.5; color: #fff; }
+  .cta-carte :global(.btn) { font-size: 17px; font-weight: 700; padding: 16px 30px; border-radius: var(--radius-btn-cta, 12px); }
+  .cta-split { background: var(--c-primary); border-radius: var(--radius-xl); overflow: hidden; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+  .cta-split__texte { padding: 44px; gap: 16px; justify-content: center; align-items: flex-start; }
+  .cta-split__media :global(img) { width: 100%; height: 100%; min-height: 280px; object-fit: cover; }
+  @media (max-width: 600px) { .cta-carte { padding: 28px; } .cta-split__texte { padding: 28px; } }
+</style>

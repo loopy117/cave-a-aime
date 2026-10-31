@@ -1,0 +1,101 @@
+---
+import { sortant, estExterne, NOUVEL_ONGLET } from '../lib/liens';
+import Section from '../components/Section.astro';
+import Markdown from '../components/Markdown.astro';
+import Img from '../components/Img.astro';
+import Icone from '../components/Icone.astro';
+import { composantsIllustrations } from '../illustrations';
+const { variant = 'image-droite', background, spacing, id, surtitre, titre, contenu, citation = false, points = [], points_style = 'traits',
+  signature, images = [], image_entiere = false, illustration, lien } = Astro.props;
+const mosaique = images.length === 3;
+const entiere = image_entiere && images.length === 1 && !illustration;
+const Illustration = illustration ? composantsIllustrations[illustration.nom as keyof typeof composantsIllustrations] : null;
+const aVisuel = images.length > 0 || !!Illustration;
+const dessous = variant === 'visuel-dessous';
+---
+<Section {background} {spacing} {id}>
+  <div class:list={['ti', `ti--${variant}`, !aVisuel && 'ti--sans-visuel']}>
+    <div class="ti__texte">
+      {surtitre && <p class="eyebrow">{surtitre}</p>}
+      <h2 class="h2">{titre}</h2>
+      {contenu && <Markdown source={contenu} class:list={['ti__contenu', citation && 'ti__citation']} />}
+      {!dessous && points.length > 0 && (
+        <ul class:list={['ti__points', `ti__points--${points_style}`]} role="list">
+          {points.map((p: any) => (
+            <li>
+              {points_style === 'traits' && <span class="ti__trait" aria-hidden="true"></span>}
+              {points_style === 'icones' && <Icone nom={p.icone ?? 'check'} taille={24} class="ti__icone" />}
+              {points_style === 'encarts'
+                ? <div class="ti__encart">{p.titre && <p class="ti__pt-titre">{p.titre}</p>}{p.texte && <p class="ti__pt-texte">{p.texte}</p>}</div>
+                : points_style === 'icones'
+                  ? <p class="ti__pt-ligne">{p.titre && <strong>{p.titre}</strong>}{p.titre && p.texte && ' : '}{p.texte}</p>
+                  : <div>{p.titre && <p class="ti__pt-titre">{p.titre}</p>}{p.texte && <p class="ti__pt-texte">{p.texte}</p>}</div>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {signature && (
+        <p class="ti__signature">{signature.nom && <strong>{signature.nom}</strong>}<span>{signature.role}</span></p>
+      )}
+      {lien && <a class="link-more" href={lien.href} {...sortant(lien.href, Astro.site)}>{lien.label}{estExterne(lien.href, Astro.site) && <Fragment set:html={NOUVEL_ONGLET} />}</a>}
+    </div>
+    {dessous && points.length > 0 && (
+      <ul class:list={['ti__points', `ti__points--${points_style}`, 'ti__points--cote']} role="list">
+        {points.map((p: any) => (
+          <li>
+            {points_style === 'icones' && <Icone nom={p.icone ?? 'check'} taille={24} class="ti__icone" />}
+            <p class="ti__pt-ligne">{p.titre && <strong>{p.titre}</strong>}{p.titre && p.texte && ' : '}{p.texte}</p>
+          </li>
+        ))}
+      </ul>
+    )}
+    {aVisuel && (
+      <div class:list={['ti__media', mosaique && 'ti__media--mosaique', images.length === 2 && 'ti__media--duo', entiere && 'ti__media--entiere']}>
+        {Illustration
+          ? <Illustration {...illustration} />
+          : images.map((img: any, i: number) => (
+            <div class="ti__cadre"><Img image={img} sizes={mosaique && i > 0 ? '(min-width: 900px) 25vw, 50vw' : '(min-width: 900px) 50vw, 100vw'} largeurs={[480, 800, 1200, 1600]} /></div>
+          ))}
+      </div>
+    )}
+  </div>
+</Section>
+<style>
+  .ti { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr)); gap: clamp(40px, 5.5vw, 80px); align-items: center; }
+  .ti--image-gauche .ti__media { order: -1; }
+  .ti--sans-visuel { grid-template-columns: minmax(0, 860px); }
+  .ti--visuel-dessous { align-items: start; }
+  .ti--visuel-dessous .ti__media { grid-column: 1 / -1; }
+  .ti__texte { display: flex; flex-direction: column; gap: 24px; }
+  .ti__texte :global(.ti__contenu) { font-size: var(--fs-xl); line-height: 1.6; }
+  .ti__texte :global(.ti__citation) { font-family: var(--font-title); font-size: clamp(20px, 1.8vw, 24px); line-height: 1.5; color: var(--c-ink, var(--c-text)); }
+  .ti__points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+  .ti__points li { display: flex; gap: 14px; align-items: flex-start; }
+  .ti__trait { width: 3px; align-self: stretch; flex: none; border-radius: 2px; background: var(--c-primary); }
+  .ti__points li:nth-child(3n+3) .ti__trait { background: var(--c-accent); }
+  .ti__pt-titre { font-size: var(--fs-xl); font-weight: 600; color: var(--c-text-strong); }
+  .ti__pt-texte { font-size: var(--fs-md); line-height: 1.55; color: var(--c-text-body); margin-top: 4px; }
+  .ti__pt-ligne { font-size: var(--fs-lg); line-height: 1.5; color: var(--c-text); }
+  .ti__pt-ligne strong { font-weight: 600; }
+  .ti__points :global(.ti__icone) { flex: none; margin-top: 1px; color: var(--c-accent-text, var(--c-accent)); }
+  .ti__points--cote { gap: 18px; padding-top: 38px; }
+  .ti__points--encarts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 24px; }
+  .ti__encart { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: var(--radius-encart, 20px); background: var(--c-surface-alt); }
+  :global(.bg-alt) .ti__encart { background: var(--c-surface); }
+  .ti__encart .ti__pt-texte { margin: 0; }
+  .ti__signature { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-base); color: var(--c-text-muted); }
+  .ti__signature strong { font-size: 18px; font-weight: 600; color: var(--c-text); }
+  :global(.on-dark) .ti__pt-ligne, :global(.on-dark) .ti__pt-titre { color: var(--c-on-dark); }
+  :global(.on-dark) .ti__pt-texte, :global(.on-dark) .ti__texte :global(.ti__contenu) { color: var(--c-on-dark-body); }
+  :global(.on-dark) .ti__points :global(.ti__icone) { color: var(--c-peche, var(--c-on-dark)); }
+  .ti__media { min-width: 0; }
+  .ti__cadre { position: relative; min-width: 0; overflow: hidden; border-radius: var(--radius-image, 24px); }
+  .ti__cadre :global(img) { width: 100%; height: 100%; object-fit: cover; }
+  .ti__media:not(.ti__media--mosaique):not(.ti__media--duo):not(.ti__media--entiere) .ti__cadre :global(img) { aspect-ratio: 4 / 3; }
+  .ti__media--entiere .ti__cadre :global(img) { aspect-ratio: auto; height: auto; object-fit: contain; }
+  .ti__media--mosaique { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 150px 150px; gap: 12px; }
+  .ti__media--mosaique .ti__cadre:first-child { grid-row: span 2; }
+  .ti__media--mosaique .ti__cadre :global(picture) { display: block; height: 100%; }
+  .ti__media--duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ti__media--duo .ti__cadre :global(img) { aspect-ratio: 3 / 4; }
+</style>

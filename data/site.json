@@ -1,0 +1,51 @@
+{
+  "nom": "La Cave à Aimé",
+  "modele": "entreprise",
+  "baseline": "Vins bio, fromages et bonnes choses",
+  "description": "Caves à vin bio à Mérindol, Lauris, Salon-de-Provence et Cheval-Blanc : vins du Luberon et d'ailleurs, fromages, bar à vin et événements.",
+  "url": "https://www.cave-a-aime.fr",
+  "types_schema": [
+    "Store",
+    "BarOrPub"
+  ],
+  "telephone": "04 90 72 38 01",
+  "email": "contact@cave-a-aime.fr",
+  "horaires": "Du mardi au samedi, 10 h – 12 h 30 et 16 h – 19 h 30",
+  "adresse": {
+    "rue": "12 rue de la Fontaine",
+    "ville": "Mérindol",
+    "code_postal": "84360",
+    "pays": "FR"
+  },
+  "legal": {
+    "raison_sociale": "SARL Made In Luberon",
+    "forme": "SARL au capital de 5 000 €",
+    "adresse": "12 rue de la Fontaine, 84360 Mérindol",
+    "directeur_publication": "Jérémy Boudoire",
+    "immatriculation": "RCS Avignon 529 726 325"
+  },
+  "zone_resume": "Luberon et Provence",
+  "urgence": {
+    "actif": false,
+    "texte": ""
+  },
+  "reseaux": [],
+  "cta_defaut": {
+    "titre": "Passez nous voir, ou appelez-nous.",
+    "texte": "Une question sur un vin, un plateau à préparer, une soirée à organiser : un seul numéro.",
+    "ctas": [
+      {
+        "label": "04 90 72 38 01",
+        "href": "tel:+33490723801",
+        "style": "primaire"
+      }
+    ],
+    "note": "Du mardi au samedi"
+  },
+  "villes": [
+    "Mérindol",
+    "Lauris",
+    "Salon-de-Provence",
+    "Cheval-Blanc"
+  ]
+}
