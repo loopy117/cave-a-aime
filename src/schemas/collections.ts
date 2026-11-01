@@ -3,6 +3,9 @@ import taxonomies from '../../data/taxonomies.json' with { type: 'json' };
 import site from '../../data/site.json' with { type: 'json' };
 import { image, metier } from './communs';
 import { JOURS } from './site';
+// Collections propres au site (fichier du site, src/site/collections/index.ts) : 1.46.0
+import { collectionsSite } from '../site/collections';
+import { schemaCollection, type DeclarationCollection } from '../lib/collections-site';
 
 const tagsDe = (collection: keyof typeof taxonomies.tags) =>
   z.array(z.enum(Object.keys(taxonomies.tags[collection]) as [string, ...string[]])).max(6).default([]);
@@ -55,7 +58,7 @@ const idEquipe = z.string().regex(/^[a-z0-9-]{2,60}$/).describe('Équipe (identi
 
 export const TYPES_RENCONTRES = { match: 'Match', plateau: 'Plateau', tournoi: 'Tournoi', amical: 'Match amical' } as const;
 
-export const collectionSchemas = {
+const collectionsSocle = {
   services: z
     .object({
       ...communs,
@@ -174,5 +177,16 @@ export const collectionSchemas = {
     .describe('Un album photo (rencontre, tournoi, fête du club). Page : /albums/<id>.'),
 } as const;
 
-export type NomCollection = keyof typeof collectionSchemas;
+for (const d of collectionsSite) if (d.nom in collectionsSocle) throw new Error(`src/site/collections : « ${d.nom} » est déjà une collection du socle, choisir un autre nom`);
+
+/** Déclarations des collections propres au site, par nom. */
+export const declarationsSite: Record<string, DeclarationCollection> = Object.fromEntries(collectionsSite.map((d) => [d.nom, d]));
+export const estCollectionSite = (nom: string): boolean => nom in declarationsSite;
+
+export const collectionSchemas = {
+  ...collectionsSocle,
+  ...Object.fromEntries(collectionsSite.map((d) => [d.nom, schemaCollection(d)])),
+} as typeof collectionsSocle & Record<string, ReturnType<typeof schemaCollection>>;
+
+export type NomCollection = keyof typeof collectionsSocle | (string & {});
 export const nomsCollections = Object.keys(collectionSchemas) as NomCollection[];

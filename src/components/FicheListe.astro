@@ -1,0 +1,134 @@
+---
+/**
+ * Liste filtrable d'une collection propre au site (1.46.0), page /<base>.
+ *  - Sans JavaScript : toutes les fiches, regroupées par le premier filtre (un choix), avec un sommaire d'ancres.
+ *  - Avec JavaScript : cases à cocher (OU dans un filtre, ET entre filtres), nombre de résultats annoncé.
+ * Les fiches épuisées passent en fin de groupe.
+ */
+import { composantsCartes } from '../cards';
+import { declarationsSite } from '../schemas/collections';
+import { valeursFiltre } from '../lib/collections-site';
+
+interface Props { collection: string; elements: { id: string; data: any }[]; titrePage: (url: string) => string | undefined }
+const { collection, elements, titrePage } = Astro.props;
+const decl = declarationsSite[collection];
+const r = decl.rendu ?? {};
+const Carte = (composantsCartes as any)[`${collection}-carte`];
+const urlRef = (c: string, id: string) => {
+  const vers: any = (decl.champs[c] as any).vers;
+  return vers.pages ? `${vers.pages.replace(/\/$/, '')}/${id}` : `${declarationsSite[vers.collection]?.base ?? '/' + vers.collection}/${id}`;
+};
+
+// Valeurs de chaque filtre présentes dans les fiches, dans l'ordre de la déclaration (choix) ou alphabétique
+const filtres = (r.filtres ?? []).map((nom) => {
+  const c = decl.champs[nom];
+  const compte = new Map<string, { libelle: string; n: number }>();
+  for (const e of elements) for (const [cle, lib] of valeursFiltre(c, e.data[nom])) {
+    const libelle = c.type === 'reference' ? (titrePage(urlRef(nom, cle)) ?? cle) : lib;
+    compte.set(cle, { libelle, n: (compte.get(cle)?.n ?? 0) + 1 });
+  }
+  const ordre = 'valeurs' in c ? Object.keys(c.valeurs) : [...compte.keys()].sort((a, b) => compte.get(a)!.libelle.localeCompare(compte.get(b)!.libelle, 'fr'));
+  return { nom, libelle: c.libelle, options: ordre.filter((k) => compte.has(k)).map((k) => ({ cle: k, ...compte.get(k)! })) };
+}).filter((f) => f.options.length > 1);
+
+// Groupes : premier filtre déclaré s'il est un choix unique, sinon un seul groupe
+const premier = r.filtres?.[0];
+const parGroupe = premier && decl.champs[premier].type === 'choix';
+const epuisesALaFin = (l: typeof elements) => [...l.filter((e) => !e.data.epuise), ...l.filter((e) => e.data.epuise)];
+const groupes = parGroupe
+  ? Object.entries((decl.champs[premier!] as any).valeurs as Record<string, { libelle: string }>)
+      .map(([cle, v]) => ({ cle, libelle: v.libelle, elements: epuisesALaFin(elements.filter((e) => e.data[premier!] === cle)) }))
+      .concat([{ cle: 'autres', libelle: 'Autres', elements: epuisesALaFin(elements.filter((e) => !e.data[premier!])) }])
+      .filter((g) => g.elements.length)
+  : [{ cle: 'tous', libelle: '', elements: epuisesALaFin(elements) }];
+const attr = (e: { data: any }) => Object.fromEntries(filtres.map((f) => [`data-f-${f.nom}`, valeursFiltre(decl.champs[f.nom], e.data[f.nom]).map(([k]) => k).join(' ')]));
+const pluriel = (n: number) => `${n} ${decl.element}${n > 1 ? 's' : ''}`;
+---
+<div class="fl" data-fiches data-element={decl.element}>
+  {filtres.length > 0 && (
+    <form class="fl__filtres" data-filtres hidden aria-label={`Filtrer : ${decl.libelle.toLowerCase()}`}>
+      {filtres.map((f) => (
+        <fieldset class="fl__filtre">
+          <legend>{f.libelle}</legend>
+          <div class="fl__options">
+            {f.options.map((o) => (
+              <label class="fl__option">
+                <input type="checkbox" name={f.nom} value={o.cle} />
+                <span>{o.libelle} <span class="fl__n">({o.n})</span></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ))}
+      <div class="fl__barre">
+        <p class="fl__etat" aria-live="polite">{pluriel(elements.length)}</p>
+        <button type="reset" class="fl__reset">Tout afficher</button>
+      </div>
+    </form>
+  )}
+  {groupes.length > 1 && (
+    <nav class="fl__sommaire" aria-label="Sommaire">
+      {groupes.map((g) => <a href={`#${collection}-${g.cle}`}>{g.libelle} <span class="fl__n">({g.elements.length})</span></a>)}
+    </nav>
+  )}
+  {groupes.map((g) => (
+    <section class="fl__groupe" id={`${collection}-${g.cle}`} data-groupe aria-labelledby={g.libelle ? `${collection}-${g.cle}-titre` : undefined}>
+      {g.libelle && <h2 class="fl__titre" id={`${collection}-${g.cle}-titre`}>{g.libelle}</h2>}
+      <ul class="fl__grille">
+        {g.elements.map((e) => <li class="fl__item" {...attr(e)}><Carte element={e} collection={collection} /></li>)}
+      </ul>
+    </section>
+  ))}
+  {r.mention && <p class="fl__mention">{r.mention}</p>}
+</div>
+
+<script>
+  for (const racine of document.querySelectorAll<HTMLElement>('[data-fiches]')) {
+    const form = racine.querySelector<HTMLFormElement>('[data-filtres]');
+    if (!form) continue;
+    form.hidden = false;
+    const element = racine.dataset.element || 'fiche';
+    const items = [...racine.querySelectorAll<HTMLElement>('.fl__item')];
+    const etat = form.querySelector<HTMLElement>('.fl__etat')!;
+    const noms = [...new Set([...form.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].map((x) => x.name))];
+    const appliquer = () => {
+      const choix = noms.map((n) => [n, [...form.querySelectorAll<HTMLInputElement>(`input[name="${n}"]:checked`)].map((x) => x.value)] as const).filter(([, v]) => v.length);
+      let n = 0;
+      for (const it of items) {
+        const ok = choix.every(([nom, v]) => (it.getAttribute(`data-f-${nom}`) || '').split(' ').some((x) => v.includes(x)));
+        it.hidden = !ok;
+        if (ok) n++;
+      }
+      for (const g of racine.querySelectorAll<HTMLElement>('[data-groupe]')) g.hidden = [...g.querySelectorAll<HTMLElement>('.fl__item')].every((x) => x.hidden);
+      const total = items.length;
+      etat.textContent = choix.length ? `${n} ${element}${n > 1 ? 's' : ''} sur ${total}` : `${total} ${element}${total > 1 ? 's' : ''}`;
+    };
+    form.addEventListener('change', appliquer);
+    form.addEventListener('reset', () => setTimeout(appliquer));
+  }
+</script>
+
+<style>
+  .fl { display: grid; gap: clamp(28px, 4vw, 44px); }
+  .fl [hidden] { display: none !important; }
+  .fl__filtres { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+  .fl__filtre { margin: 0; padding: 0; border: 0; min-width: 0; }
+  .fl__filtre legend { padding: 0; margin-bottom: 8px; font-weight: 600; font-size: var(--fs-sm); color: var(--c-text-strong); }
+  .fl__options { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fl__option { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 14px; border: 1px solid var(--c-border); border-radius: var(--radius-pill); cursor: pointer; font-size: var(--fs-sm); color: var(--c-text); }
+  .fl__option:has(input:checked) { border-color: var(--c-accent); background: var(--c-surface-alt); }
+  .fl__option:has(input:focus-visible) { outline: 3px solid var(--c-link); outline-offset: 2px; }
+  .fl__option input { accent-color: var(--c-accent); width: 18px; height: 18px; margin: 0; }
+  .fl__n { color: var(--c-text-muted); }
+  .fl__barre { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .fl__etat { margin: 0; font-weight: 600; color: var(--c-text-strong); }
+  .fl__reset { min-height: 40px; padding: 6px 16px; border: 1px solid var(--c-border); border-radius: var(--radius-btn, var(--radius-pill)); background: none; color: var(--c-text); font: inherit; font-size: var(--fs-sm); cursor: pointer; }
+  .fl__reset:focus-visible { outline: 3px solid var(--c-link); outline-offset: 2px; }
+  .fl__sommaire { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fl__sommaire a { padding: 8px 14px; border-radius: var(--radius-pill); border: 1px solid var(--c-border); color: var(--c-text); font-weight: 600; font-size: var(--fs-sm); text-decoration: none; }
+  .fl__sommaire a:hover { background: var(--c-surface-alt); }
+  .fl__groupe { display: grid; gap: 18px; scroll-margin-top: 100px; }
+  .fl__titre { margin: 0; font-family: var(--font-title); font-size: var(--fs-h2); color: var(--c-text-strong); }
+  .fl__grille { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
+  .fl__mention { margin: 0; font-size: var(--fs-sm); font-style: italic; color: var(--c-text-muted); }
+</style>
