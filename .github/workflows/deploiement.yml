@@ -29,7 +29,7 @@ jobs:
     # Branche de l'éditeur ou aperçu demandé, sans aperçu configuré : rien à construire
     # Ces workflows servent aux sites ; dans le dépôt du socle lui-même (sans contenus) ils ne tournent pas
     if: ${{ github.repository != 'loopy117/socle-sites' && ((github.event_name != 'repository_dispatch' && !startsWith(github.ref, 'refs/heads/cms/')) || vars.DOSSIER_APERCU != '') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Lecture seule : ce job détient la clé SSH de production. Les traductions sont enregistrées par le job « traductions ».
     permissions:
       contents: read
@@ -379,7 +379,7 @@ jobs:
     # Seul content/traductions/ est accepté ; l'agent du serveur (xm-agent synchro) fusionne cette proposition.
     needs: construire-et-deployer
     if: ${{ needs.construire-et-deployer.outputs.traductions == '1' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write

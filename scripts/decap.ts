@@ -13,7 +13,7 @@ import { join, relative } from 'node:path';
 import { stringify } from 'yaml';
 import { z } from 'astro/zod';
 import { blocs } from '../src/schemas/blocs';
-import { collectionSchemas } from '../src/schemas/collections';
+import { collectionSchemas, declarationsSite } from '../src/schemas/collections';
 import { collectionsDuSite, blocDuSite, modeleSite } from '../src/schemas/modeles';
 import { page } from '../src/schemas/page';
 import { reglages } from '../src/lib/collections';
@@ -63,7 +63,7 @@ const LIBELLES: Record<string, string> = {
   points: 'Points', items: 'Éléments', lien: 'Lien', label: 'Libellé', href: 'Lien (URL)', style: 'Style', src: 'Fichier', alt: 'Texte alternatif',
   focus: "Point d'intérêt", icone: 'Icône', question: 'Question', reponse: 'Réponse', valeur: 'Valeur', libelle: 'Libellé', source: 'Source',
   slides: 'Diapositives', note: 'Note', statut: 'Statut', date: 'Date', resume: 'Résumé', categorie: 'Métier', mis_en_avant: 'Mis en avant',
-  ordre: 'Ordre', seo: 'Référencement', description: 'Description', noindex: 'Ne pas indexer', prestations: 'Prestations', badge: 'Badge',
+  ordre: 'Ordre', epuise: 'Épuisé', seo: 'Référencement', description: 'Description', noindex: 'Ne pas indexer', prestations: 'Prestations', badge: 'Badge',
   lien_label: 'Texte du lien', lieu: 'Commune', tags: 'Étiquettes', galerie: 'Galerie', ville: 'Ville', gabarit: 'Gabarit',
   fil_ariane: "Fil d'Ariane", brief: 'Demande d\'origine', sections: 'Sections', lien_tout_voir: 'Lien « tout voir »', bouton: 'Texte du bouton',
   sujet: "Objet de l'e-mail", champs: 'Champs', obligatoires: 'Champs obligatoires', body: 'Corps de la page',
@@ -72,7 +72,7 @@ const LIBELLES: Record<string, string> = {
 };
 const LIBELLES_BLOCS: Record<string, string> = {
   hero: 'Ouverture (hero)', texte: 'Texte', 'texte-image': 'Texte et image', features: 'Points forts / étapes', galerie: 'Galerie',
-  slider: 'Diaporama', cta: "Appel à l'action", faq: 'Questions fréquentes', chiffres: 'Chiffres clés', formulaire: 'Formulaire de contact', tarifs: 'Tarifs', 'carte-restaurant': 'Carte du restaurant', partenaires: 'Partenaires', planning: 'Planning des entraînements',
+  slider: 'Diaporama', cta: "Appel à l'action", faq: 'Questions fréquentes', chiffres: 'Chiffres clés', caracteristiques: 'Caractéristiques', formulaire: 'Formulaire de contact', tarifs: 'Tarifs', 'carte-restaurant': 'Carte du restaurant', partenaires: 'Partenaires', planning: 'Planning des entraînements',
   boucle: 'Liste automatique (boucle)', labels: 'Labels et certifications', temoignages: 'Témoignages clients', 'match-center': 'Prochaine rencontre et dernier résultat', frise: 'Frise chronologique',
 };
 /** Champs conservés mais non modifiables dans Decap. */
@@ -187,8 +187,35 @@ function champsPage() {
   return champsObjet(s, ['sections'], ['brief']).concat([champSections(true)]);
 }
 
+/** Collection propre au site (1.46.0) : libellés, aides et listes de la déclaration ; titre composé masqué. */
+function champsFiche(nom: string, champs: any[]): any[] {
+  const d = declarationsSite[nom];
+  const pagesSous = (prefixe: string) => {
+    const dir = join(R, 'content/pages', prefixe.replace(/^\/|\/$/g, ''));
+    return existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.yaml')).map((f) => f.replace(/\.yaml$/, '')).sort() : [];
+  };
+  return champs.map((f) => {
+    if (f.name === 'titre' || f.name === 'provenance') return { name: f.name, label: libelle(f.name), widget: 'hidden', required: false };
+    const c: any = d.champs[f.name];
+    if (!c) return f;
+    const g: any = { ...f, label: c.libelle, hint: c.description };
+    if (c.type === 'choix' || c.type === 'choix_multiple') g.options = Object.entries(c.valeurs).map(([value, v]: any) => ({ label: v.libelle, value }));
+    if (c.type === 'annee' && c.sans_valeur) Object.assign(g, { widget: 'string', hint: `${c.description} Année (ex. 2022), ou « sans » : ${c.sans_valeur}.` });
+    if (c.type === 'reference' && c.vers.pages) Object.assign(g, { widget: 'select', multiple: !!c.multiple, options: pagesSous(c.vers.pages), field: undefined });
+    if (c.unite && g.widget === 'number') g.label = `${c.libelle} (${c.unite})`;
+    if (c.type === 'prix') g.label = `${c.libelle} (€)`;
+    return g;
+  }).sort((a, b) => rang(a.name) - rang(b.name));
+  // Champs de la fiche d'abord, dans l'ordre déclaré, puis « épuisé », puis les réglages communs
+  function rang(n: string) { const i = Object.keys(d.champs).indexOf(n); return i >= 0 ? i : n === 'epuise' ? 1000 : 2000; }
+}
+
 function champsCollection(nom: keyof typeof collectionSchemas) {
   const s = js(collectionSchemas[nom]);
+  if (declarationsSite[nom]) return [
+    ...champsFiche(nom, champsObjet(s, ['sections'])),
+    { name: 'body', label: 'Texte libre (facultatif)', widget: 'markdown', required: false, buttons: ['bold', 'italic', 'link', 'bulleted-list'], editor_components: [], modes: ['rich_text'] },
+  ];
   // Équipe : liste des pages équipes (jamais un identifiant à taper)
   const equipe = (f: any) => (f.name === 'equipe'
     ? { name: 'equipe', label: 'Équipe', widget: 'relation', collection: 'equipes', value_field: '{{slug}}', search_fields: ['titre', 'nom_court'], display_fields: ['nom_court'], required: f.required, ...(f.hint ? { hint: f.hint } : {}) }
@@ -388,7 +415,8 @@ function config() {
         name: nom, label: reglages[nom].libelle, folder: `content/${nom}`, extension: 'md', format: 'frontmatter', create: true,
         identifier_field: 'titre', summary: '{{titre}}', slug: '{{slug}}', editor: { preview: false },
         media_folder: `/media/${nom}/{{filename}}`, public_folder: `/img/${nom}/{{filename}}`,
-        sortable_fields: ['titre', 'date', 'ordre'], ...(nom === 'rencontres' ? { summary: '{{date}} · {{titre}}', view_groups: [{ label: 'Équipe', field: 'equipe' }] } : {}), ...(nom === 'realisations' ? { view_groups: [{ label: 'Métier', field: 'categorie' }] } : {}),
+        sortable_fields: ['titre', 'date', 'ordre'],
+        ...(declarationsSite[nom] ? { identifier_field: [declarationsSite[nom].titre].flat()[0], summary: [declarationsSite[nom].titre].flat().map((c) => `{{${c}}}`).join(' — '), sortable_fields: [[declarationsSite[nom].titre].flat()[0], 'ordre'], label_singular: declarationsSite[nom].element } : {}), ...(nom === 'rencontres' ? { summary: '{{date}} · {{titre}}', view_groups: [{ label: 'Équipe', field: 'equipe' }] } : {}), ...(nom === 'realisations' ? { view_groups: [{ label: 'Métier', field: 'categorie' }] } : {}),
         fields: champsCollection(nom),
       })),
       ...collectionsTraductions(),
