@@ -1,9 +1,9 @@
 {
  "socle": "socle-sites",
- "version": "1.47.1",
+ "version": "1.47.2",
  "modele": "entreprise",
- "commit": "f4f03fb",
- "installe": "2026-11-03T13:37:53.568Z",
+ "commit": "9a6ff18",
+ "installe": "2026-11-04T06:22:05.747Z",
  "motifs": {
   "socle": [
    ".github/workflows/**",
@@ -129,7 +129,7 @@
   "src/lib/contenu.ts": "f825725e088723d7c413112c21062c4d65d7a576ab41e28847697694d9fabfd4",
   "src/lib/creneaux.ts": "829083504c1ad73f982b79006faf0bafa10544371f5def7ef8fb68f57232eaea",
   "src/lib/donnees-structurees.ts": "1886345eb7e63f8d0c319585d3e053e71291b68e4a23846ee78acc183fc032ad",
-  "src/lib/ecoconception.ts": "0e17177eaf3baa88b283b2ed999c0c307d1f2c06266b0de3f418da7057ee68a9",
+  "src/lib/ecoconception.ts": "95a63d3305efe663d520d7a0f8ba19f872b07b492c0f47f50828286cf5e9528b",
   "src/lib/emplacements.ts": "be02b370fcb5822c628b511ae232af19ff25f372d788d6f81333fdf09ed00062",
   "src/lib/empreinte.ts": "426bd0c81af2f293f935ab796e0f4b31ff13a5ea7fdf059e5cd5f2a9970fdd64",
   "src/lib/evenements.ts": "256b5bce9350a5cf6bf3fbca6721fa15a86c7d225665b41856aad8cd82245cbc",
