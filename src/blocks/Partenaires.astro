@@ -4,6 +4,8 @@
  * grille : un niveau par ligne (principal en grande carte, officiel en logos moyens, soutien en petits logos).
  * bandeau : une rangée de logos, discrète (fin de page).
  * Les logos sont posés sur des cases blanches pour garder les couleurs des marques, quel que soit le fond.
+ * Un seul niveau utilisé : pas de sous-titre de niveau (le titre de la section suffit).
+ * cases: "noires" (data/partenaires.json) : cases noires sans bordure claire, pour des logos blancs sur fond noir.
  * Liens marqués rel="sponsored" : c'est ce que Google demande pour un lien de partenariat.
  */
 import Section from '../components/Section.astro';
@@ -24,11 +26,12 @@ const devenir = voirDevenir ? d.devenir : undefined;
 const dernier = groupes.at(-1)?.niveau;
 const tailles: Record<NiveauPartenaire, number[]> = { principal: [320, 640], officiel: [240, 480], soutien: [160, 320] };
 const rel = 'sponsored noopener';
+const noires = d.cases === 'noires';
 ---
 {tous.length > 0 && (
   <Section {background} {spacing} {id} {surtitre} {titre} {intro}>
     {variant === 'bandeau' ? (
-      <ul class="pt-bandeau" role="list">
+      <ul class:list={['pt-bandeau', { 'pt--noires': noires }]} role="list">
         {tous.map((p: Partenaire) => (
           <li>
             {p.url
@@ -38,10 +41,10 @@ const rel = 'sponsored noopener';
         ))}
       </ul>
     ) : (
-      <div class="pt">
+      <div class:list={['pt', { 'pt--noires': noires }]}>
         {groupes.map((g) => (
           <div class:list={['pt-groupe', `pt-groupe--${g.niveau}`]}>
-            {g.niveau !== 'principal' && <h3 class="pt-niveau">{g.libelle}</h3>}
+            {g.niveau !== 'principal' && groupes.length > 1 && <h3 class="pt-niveau">{g.libelle}</h3>}
             <ul class:list={['pt-liste', `pt-liste--${g.niveau}`]} role="list">
               {g.liste.map((p: Partenaire) => {
                 const Balise = p.url ? 'a' : 'div';
@@ -116,6 +119,10 @@ const rel = 'sponsored noopener';
   .pt-devenir:hover { color: var(--c-link-hover); }
   :global(.on-dark) .pt-devenir:hover { color: var(--c-on-dark); }
   .pt-devenir--seul { display: inline-block; padding: 12px 18px; border-radius: var(--radius-md); }
+
+  /* Cases noires : logos blancs sur fond noir (ensemble monochrome) */
+  .pt--noires .pt-case:not(.pt-devenir) { background: #000; border-color: rgb(255 255 255 / 0.16); color: #fff; }
+  .pt--noires a.pt-case:not(.pt-devenir):hover, .pt--noires a.pt-case:not(.pt-devenir):focus-visible { box-shadow: 0 8px 22px rgb(0 0 0 / 0.4); border-color: rgb(255 255 255 / 0.4); }
 
   .pt-bandeau { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 

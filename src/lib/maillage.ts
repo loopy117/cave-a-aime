@@ -90,17 +90,29 @@ export function lierTexte(html: string, cibles: Cible[], etat: EtatPage, max = L
   return morceaux.join('');
 }
 
+/** Version globale (toutes les occurrences) d'un motif, compilée une seule fois pour tout le build. */
+const globaux = new Map<string, RegExp>();
+function motifGlobal(c: Cible): RegExp {
+  let r = globaux.get(c.motif.source);
+  if (!r) globaux.set(c.motif.source, (r = new RegExp(c.motif.source, 'giu')));
+  return r;
+}
+
 /**
  * Première occurrence de l'ancre qui ne fait pas partie d'une ancre plus longue
  * (« pompe à chaleur » n'est jamais lié à l'intérieur de « pompe à chaleur de piscine »).
  */
 function premiereOccurrenceLibre(texte: string, c: Cible, cibles: Cible[]): { index: number; 0: string } | null {
-  const plusLongues = cibles.filter((x) => x.ancre.length > c.ancre.length);
+  // Coût : l'ancre absente du texte (cas courant) est écartée par une seule recherche. Avant, toutes les ancres
+  // plus longues étaient recompilées et cherchées d'abord, pour chaque ancre et chaque morceau de texte :
+  // un coût au carré du nombre de pages (plusieurs secondes par page au-delà de 1 000 pages).
+  if (texte.search(c.motif) < 0) return null;
   const occupees: [number, number][] = [];
-  for (const x of plusLongues) {
-    for (const r of texte.matchAll(new RegExp(x.motif.source, 'giu'))) occupees.push([r.index!, r.index! + r[0].length]);
+  for (const x of cibles) {
+    if (x.ancre.length <= c.ancre.length || texte.search(x.motif) < 0) continue;
+    for (const r of texte.matchAll(motifGlobal(x))) occupees.push([r.index!, r.index! + r[0].length]);
   }
-  for (const r of texte.matchAll(new RegExp(c.motif.source, 'giu'))) {
+  for (const r of texte.matchAll(motifGlobal(c))) {
     const debut = r.index!, fin = debut + r[0].length;
     if (!occupees.some(([a, b]) => debut >= a && fin <= b)) return { index: debut, 0: r[0] };
   }

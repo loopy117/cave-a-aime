@@ -154,6 +154,7 @@ const lienConfidentialite = confidentialite?.publie ? '/confidentialite' : null;
 
 <script>
   import { evenement } from '../lib/evenements';
+  import { preparerJeton, jetonPourEnvoi } from '../lib/jeton-formulaire';
 
   /** Photos réduites à 2000 px dans le navigateur : envoi plus rapide, pas de limite de taille dépassée. */
   async function reduire(f: File): Promise<File> {
@@ -181,6 +182,7 @@ const lienConfidentialite = confidentialite?.publie ? '/confidentialite' : null;
   }
   for (const form of document.querySelectorAll<HTMLFormElement>('[data-formulaire]')) {
     const debut = performance.now();
+    preparerJeton(form);   // jeton anti-robots demandé au premier contact avec le formulaire
     const statut = form.querySelector<HTMLElement>('[data-statut]')!;
     const bouton = form.querySelector<HTMLButtonElement>('[data-bouton]')!;
     if (new URLSearchParams(location.search).get('envoi') === 'erreur') {
@@ -227,6 +229,7 @@ const lienConfidentialite = confidentialite?.publie ? '/confidentialite' : null;
       statut.dataset.etat = '';
       statut.textContent = 'Envoi en cours…';
       try {
+        donnees.set('jeton', await jetonPourEnvoi(form));   // attend si besoin les 5 s exigées par le serveur
         const rep = await fetch(form.action, { method: 'POST', body: donnees, headers: { Accept: 'application/json' } });
         const r = await rep.json();
         if (r.ok) {

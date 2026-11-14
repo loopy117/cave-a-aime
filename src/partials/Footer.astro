@@ -11,6 +11,7 @@ const { devise, logo_taille: logoTaille = 52, contact, adhesions = [] } = piedDe
 import { navigation } from '../lib/site';
 import { sortant, NOUVEL_ONGLET } from '../lib/liens';
 import Ecoindex from './Ecoindex.astro';
+import Reseaux from './Reseaux.astro';
 const nav = await navigation();
 const tel = 'tel:+33' + site.telephone.replace(/\s/g, '').replace(/^0/, '');
 const annee = new Date().getFullYear();
@@ -83,6 +84,7 @@ const lieu = [s.adresse?.ville && (s.adresse.code_postal ? `${s.adresse.ville} (
         {nav.legal.map((l) => <a href={l.href}>{l.label}</a>)}
         <a href="/plan-du-site">Plan du site</a>
       </span>
+      <Reseaux classe="fg__reseaux" />
       {adhesions.length > 0 && (
         <div class="footer__adhesions">
           <span class="footer__adhesions-titre">Membre de</span>
@@ -139,6 +141,7 @@ const lieu = [s.adresse?.ville && (s.adresse.code_postal ? `${s.adresse.ville} (
         {nav.colonnes.flatMap((c) => c.liens).map((l) => <a href={l.href}>{l.label}</a>)}
       </nav>
     )}
+    <Reseaux classe="footer__reseaux" />
     {adhesions.length > 0 && (
       <div class="footer__adhesions">
         <span class="footer__adhesions-titre">Membre de</span>
@@ -190,6 +193,7 @@ const lieu = [s.adresse?.ville && (s.adresse.code_postal ? `${s.adresse.ville} (
   .footer a { color: var(--c-footer-ink, #E1ECF0); }
   .footer a:hover { color: #fff; text-decoration: underline; }
   .footer__devise { font-style: italic; color: var(--c-footer-devise, #D2E2E8); }
+  .footer__reseaux { width: 100%; }
   .footer__liens { width: 100%; display: flex; flex-wrap: wrap; gap: 8px 22px; }
   /* Adhésions (data/footer.json › adhesions) : logos des réseaux dont l'entreprise est membre */
   .footer__adhesions { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; font-size: 14px; color: var(--c-footer-muted, #B9CDD5); }
