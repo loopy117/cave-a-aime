@@ -39,6 +39,10 @@ export const partenaires = z
       .strict()
       .optional()
       .describe('Titres des niveaux, si les libellés par défaut ne conviennent pas'),
+    cases: z
+      .enum(['blanches', 'noires'])
+      .default('blanches')
+      .describe('Fond des cases de logos : blanches (couleurs des marques) ou noires (logos blancs sur fond noir, pour un ensemble monochrome)'),
     devenir: lien.optional().describe('Case « Devenir partenaire » en fin de liste (ex. vers le formulaire de contact)'),
     liste: z.array(partenaire).max(60),
   })

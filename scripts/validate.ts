@@ -11,7 +11,8 @@ import { problemesMarkdown } from '../src/lib/markdown-regles';
 import { mediaPermis } from '../src/lib/medias';
 import { page as pageSchema } from '../src/schemas/page';
 import { section as sectionSchema } from '../src/schemas/blocs';
-import { collectionSchemas, nomsCollections, type NomCollection } from '../src/schemas/collections';
+import { collectionSchemas, nomsCollections, declarationsSite, type NomCollection } from '../src/schemas/collections';
+import { cleFiche, estIndexable, optionsCollection } from '../src/lib/collections-site';
 import { construireIndex, resoudreEntree } from '../src/lib/index-site';
 import { verifierMenuPrincipal, verifierLiensPied } from '../src/lib/menu-regles';
 import { executer, estPublie, type Element } from '../src/lib/requete';
@@ -197,6 +198,33 @@ let partenairesDonnees: any = null;
 
 /* ------------------------ 2. Index et navigation ------------------------ */
 const index = construireIndex(pages, collections as any, taxonomies);
+
+// Collections propres au site (1.46.0) : références existantes et publiées, doublons, options du client
+for (const [nom, decl] of Object.entries(declarationsSite)) {
+  const fiches = collections[nom] ?? [];
+  try { optionsCollection(nom); } catch (e: any) { signaler('erreur', `data/collections/${nom}.json`, 'json', e.message); }
+  const cles = new Map<string, string>();
+  let nonIndexees = 0;
+  for (const e of fiches) {
+    const publie = estPublie(e);
+    for (const [champ, c] of Object.entries(decl.champs)) {
+      if (c.type !== 'reference' || e.data[champ] == null) continue;
+      const vers: any = c.vers;
+      for (const id of [e.data[champ]].flat() as string[]) {
+        const url = vers.pages ? `${vers.pages.replace(/\/$/, '')}/${id}` : `${declarationsSite[vers.collection]?.base ?? '/' + vers.collection}/${id}`;
+        const cible = index.get(url);
+        if (!cible) signaler('erreur', e.fichier, champ, `${c.libelle} : « ${id} » ne correspond à aucune page (${url})`);
+        else if (!cible.publie && publie) signaler('avertissement', e.fichier, champ, `${c.libelle} : « ${cible.titre} » est en brouillon`);
+      }
+    }
+    const cle = cleFiche(decl, e.data);
+    if (cles.has(cle)) signaler('avertissement', e.fichier, 'cle', `même ${decl.cle.join(', ')} que ${cles.get(cle)} : doublon ?`);
+    else cles.set(cle, e.fichier);
+    if (publie && !estIndexable(decl, e.data)) nonIndexees++;
+  }
+  if (nonIndexees && decl.indexable) signaler('avertissement', `content/${nom}`, 'indexable',
+    `${nonIndexees} fiche(s) publiée(s) non indexée(s) : il leur manque ${decl.indexable.textes.join(' et ')} écrits par l'entreprise (${decl.indexable.mots} mots au moins). Elles restent dans la liste du site.`);
+}
 const verifierNav = (fichier: string, liste: any[], chemin: string) =>
   liste.forEach((e, i) => {
     const r = resoudreEntree(e, index);

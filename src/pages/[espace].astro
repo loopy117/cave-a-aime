@@ -1,0 +1,87 @@
+---
+/**
+ * Espace des familles d'un club (/espace-familles/) : une page du site, avec son en-tête, son menu, son pied de page
+ * et ses couleurs. Le contenu (connexion par lien e-mail, droit à l'image, annonces, albums et documents réservés)
+ * vient de l'API du serveur, /xmedia-ai/famille/api.php (src/lib/espace-familles.ts). Jamais indexée, hors sitemap.
+ * Générée seulement pour un site de club (data/site.json « modele »).
+ */
+import Base from '../layouts/Base.astro';
+import siteBrut from '../../data/site.json';
+const site = siteBrut as any;
+
+export function getStaticPaths() {
+  return (siteBrut as any).modele === 'club' ? [{ params: { espace: 'espace-familles' } }] : [];
+}
+---
+<Base titre="Espace des familles" seo={{ titre: `Espace des familles — ${site.nom}`, noindex: true }} url="/espace-familles">
+  <section class="section bg-clair sp-normal">
+    <div class="container container--narrow section__inner">
+      <div id="ef" class="ef">
+        <header class="ef-entete">
+          <div>
+            <p class="eyebrow">{site.nom}</p>
+            <h1 class="ef-h1">Espace des familles</h1>
+          </div>
+          <div id="ef-qui"></div>
+        </header>
+        <div id="ef-app" aria-live="polite">
+          <p class="ef-aide">Chargement…</p>
+          <noscript><p class="ef-erreur">L'espace des familles a besoin de JavaScript : activez-le dans votre navigateur.</p></noscript>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import '../lib/espace-familles';
+</script>
+
+<style is:global>
+  /* Contenu affiché par le script : styles globaux préfixés .ef (les styles limités d'Astro ne s'y appliquent pas) */
+  .ef { display: flex; flex-direction: column; gap: 8px; }
+  .ef-entete { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .ef-h1 { font-family: var(--font-title); font-weight: var(--fw-title, 700); text-transform: var(--title-transform, none); font-size: var(--fs-h1); line-height: 1.05; margin: 4px 0 0; color: var(--c-text-strong); }
+  .ef h2 { font-family: var(--font-title); font-weight: var(--fw-title, 700); text-transform: var(--title-transform, none); font-size: var(--fs-h3); color: var(--c-text-strong); margin: 28px 0 12px; }
+  .ef-carte h2 { margin-top: 0; }
+  .ef h3 { font-size: var(--fs-lg); margin: 0 0 4px; color: var(--c-text-strong); }
+  .ef p { margin: 0 0 10px; }
+  .ef-intro { font-size: var(--fs-md); color: var(--c-text-body); }
+  .ef-carte { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 14px; }
+  .ef-carte summary { cursor: pointer; font-weight: 700; color: var(--c-text-strong); }
+  .ef-carte details[open] summary, .ef-carte[open] summary { margin-bottom: 14px; }
+  .ef-champ { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .ef-champ label { font-weight: 600; font-size: var(--fs-sm); color: var(--c-text-strong); }
+  .ef input, .ef textarea, .ef select { font: inherit; color: var(--c-text); background: var(--c-surface); border: 1.5px solid var(--c-border-dark, var(--c-border)); border-radius: var(--radius-md); padding: 12px 14px; width: 100%; box-sizing: border-box; }
+  .ef input:focus-visible, .ef textarea:focus-visible, .ef select:focus-visible, .ef a:focus-visible, .ef button:focus-visible, .ef summary:focus-visible { outline: 3px solid var(--c-link); outline-offset: 2px; }
+  .ef-aide, .ef-meta { color: var(--c-text-muted); font-size: var(--fs-sm); }
+  .ef-meta { display: block; }
+  /* Messages sous un bouton : .ef .ef-ok l'emporte sur « .ef p { margin: 0 0 10px } » */
+  .ef .ef-ok { background: #e3f4ea; color: #155c3b; padding: 10px 14px; border-radius: var(--radius-md); font-weight: 600; margin: 16px 0 0; }
+  .ef .ef-erreur { color: #b42318; font-weight: 600; margin: 16px 0 0; }
+  .ef #ef-msg .ef-ok { margin: 0 0 16px; }
+  .ef-puce { display: inline-block; font-size: var(--fs-sm); font-weight: 700; padding: 4px 12px; border-radius: var(--radius-pill, 99px); }
+  .ef-p-accord { background: #e3f4ea; color: #155c3b; }
+  .ef-p-refus { background: #fde8e6; color: #9b1c12; }
+  .ef-p-sans_reponse { background: #fdf1dc; color: #7a4a00; }
+  .ef-enfant { display: flex; flex-direction: column; gap: 10px; }
+  .ef-haut { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  .ef-haut .ef-meta { display: inline; font-family: var(--font-sans); text-transform: none; font-weight: 400; }
+  .ef h2[tabindex='-1']:focus { outline: none; }
+  .ef-texte { font-size: var(--fs-sm); color: var(--c-text-body); }
+  .ef-texte-annonce { white-space: pre-line; }
+  .ef-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .ef-raccourcis { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 8px; }
+  .ef-raccourcis a { font-weight: 600; color: var(--c-link); }
+  .ef-albums, .ef-photos, .ef-docs { list-style: none; padding: 0; margin: 0; }
+  .ef-albums { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)); gap: 14px; }
+  .ef-albums a { display: block; text-decoration: none; color: inherit; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; }
+  .ef-albums img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--c-surface-alt); }
+  .ef-albums span { display: block; padding: 10px 12px; font-weight: 600; }
+  .ef-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); gap: 8px; }
+  .ef-photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-md); display: block; }
+  .ef-docs li { margin-bottom: 8px; }
+  .ef-docs a { display: flex; justify-content: space-between; gap: 10px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 14px 16px; color: inherit; text-decoration: none; font-weight: 600; }
+  .ef-docs .ef-meta { display: inline; font-weight: 400; }
+  .ef-piege { position: absolute; left: -10000px; }
+</style>

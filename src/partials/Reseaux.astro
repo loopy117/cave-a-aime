@@ -1,0 +1,45 @@
+---
+/**
+ * Liens vers les réseaux sociaux de l'entreprise (data/site.json › reseaux), dans le pied de page.
+ * En texte (« Facebook », « Instagram »…) : lisibles par tous, sans logo de marque à dessiner ni à charger.
+ * rel="me" : ces pages appartiennent à l'entreprise (mêmes adresses que « sameAs » des données structurées).
+ */
+import site from '../../data/site.json';
+import { NOUVEL_ONGLET } from '../lib/liens';
+
+const NOMS: [RegExp, string][] = [
+  [/(^|\.)facebook\.com$|(^|\.)fb\.com$/, 'Facebook'],
+  [/(^|\.)instagram\.com$/, 'Instagram'],
+  [/(^|\.)linkedin\.com$/, 'LinkedIn'],
+  [/(^|\.)youtube\.com$|(^|\.)youtu\.be$/, 'YouTube'],
+  [/(^|\.)tiktok\.com$/, 'TikTok'],
+  [/(^|\.)x\.com$|(^|\.)twitter\.com$/, 'X'],
+  [/(^|\.)pinterest\.[a-z.]+$/, 'Pinterest'],
+  [/(^|\.)threads\.(net|com)$/, 'Threads'],
+  [/(^|\.)bsky\.app$/, 'Bluesky'],
+  [/(^|\.)whatsapp\.com$|(^|\.)wa\.me$/, 'WhatsApp'],
+];
+const nom = (u: string) => {
+  try {
+    const h = new URL(u).hostname.toLowerCase().replace(/^www\./, '');
+    return NOMS.find(([r]) => r.test(h))?.[1] ?? h;
+  } catch { return u; }
+};
+const reseaux = ((site as any).reseaux ?? []) as string[];
+const { classe } = Astro.props as { classe?: string };
+---
+{reseaux.length > 0 && (
+  <nav class:list={['reseaux', classe]} aria-label="Réseaux sociaux">
+    <span class="reseaux__titre">Suivez-nous</span>
+    <ul class="reseaux__liste">
+      {reseaux.map((u) => <li><a href={u} target="_blank" rel="me noopener" data-externe>{nom(u)}<Fragment set:html={NOUVEL_ONGLET} /></a></li>)}
+    </ul>
+  </nav>
+)}
+<style>
+  .reseaux { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  .reseaux__titre { color: var(--c-footer-muted, #B9CDD5); font-size: 14px; }
+  .reseaux__liste { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; margin: 0; padding: 0; }
+  .reseaux__liste a { display: inline-block; padding: 4px 0; font-weight: 500; color: var(--c-footer-ink, #E1ECF0); }
+  .reseaux__liste a:hover { color: #fff; text-decoration: underline; }
+</style>
