@@ -1,7 +1,8 @@
 /** Registre des cartes : quelle carte sait afficher quelle collection (spec §3). */
 import type { NomCollection } from '../schemas/collections';
+import { collectionsSite } from '../site/collections';
 
-export const cartes = {
+const cartesSocle = {
   'service-carte': { collection: 'services', description: 'Grande carte : image, trait de couleur du métier, titre, résumé, prestations, lien.' },
   'realisation-carte': { collection: 'realisations', description: 'Image, commune en surtitre, titre du chantier.' },
   'article-carte': { collection: 'articles', description: 'Article « À savoir » : visuel facultatif, thème et date, titre, résumé.' },
@@ -12,5 +13,11 @@ export const cartes = {
   'zone-pastille': { collection: 'zones', description: 'Pastille cliquable colorée selon le métier. À utiliser avec la disposition « flux ».' },
 } as const satisfies Record<string, { collection: NomCollection; description: string }>;
 
-export type NomCarte = keyof typeof cartes;
+// Collections propres au site (1.46.0) : une carte générée par collection, « <nom>-carte »
+export const cartes = {
+  ...cartesSocle,
+  ...Object.fromEntries(collectionsSite.map((d) => [`${d.nom}-carte`, { collection: d.nom, description: `Fiche « ${d.element} » : image, ${[...(d.rendu?.carte?.surtitre ?? []), 'titre', ...(d.rendu?.carte?.details ?? [])].join(', ')}${d.prix ? ', prix' : ''}.` }])),
+} as typeof cartesSocle & Record<string, { collection: NomCollection; description: string }>;
+
+export type NomCarte = keyof typeof cartesSocle | (string & {});
 export const nomsCartes = Object.keys(cartes) as NomCarte[];

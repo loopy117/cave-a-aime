@@ -1,15 +1,17 @@
 ---
 /** Agence une liste de cartes : grid, slider, liste, masonry, flux (spec §3). */
 import { composantsCartes } from '../cards';
+import { cartes } from '../cards/cartes';
 interface Props { elements: any[]; carte: string; affichage: string; options?: Record<string, any> }
 const { elements, carte, affichage, options = {} } = Astro.props;
 const Carte = (composantsCartes as any)[carte];
+const collection = (cartes as any)[carte]?.collection;
 const colonnes = options.colonnes ?? 3;
 const visibles = options.visibles ?? 3;
 const Balise = affichage === 'flux' ? 'div' : 'ul';
 ---
 <Balise class:list={['dp', `dp--${affichage}`, options.separateurs === false && 'dp--sans-sep']} style={`--cols:${colonnes};--visibles:${visibles}`} tabindex={affichage === 'slider' ? 0 : undefined}>
-  {elements.map((e) => affichage === 'flux' ? <Carte element={e} /> : <li class="dp__item"><Carte element={e} /></li>)}
+  {elements.map((e) => affichage === 'flux' ? <Carte element={e} collection={collection} /> : <li class="dp__item"><Carte element={e} collection={collection} /></li>)}
 </Balise>
 <style>
   .dp { list-style: none; margin: 0; padding: 0; }

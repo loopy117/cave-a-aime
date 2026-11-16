@@ -20,6 +20,8 @@ const blocPropose = (nom: string): boolean => modeles?.blocDuSite?.(nom) ?? true
 const collectionsProposees = new Set<string>(modeles?.collectionsDuSite?.() ?? Object.keys(collectionSchemas));
 
 const communs = new Set(['block', 'background', 'spacing', 'id']);
+// Collections propres au site (src/site/collections, 1.46.0 ; absent de la variante collectivite)
+const declarations: any[] = (await import('../src/site/collections').catch(() => null))?.collectionsSite ?? [];
 
 function typeDe(s: any): string {
   if (!s) return '?';
@@ -120,8 +122,26 @@ Tri : \`ordre: date desc\` ou liste \`[mis_en_avant desc, date desc]\`, ou \`ale
 `;
 
 for (const [nom, schema] of Object.entries(collectionSchemas)) {
-  if (!collectionsProposees.has(nom)) continue;
+  if (!collectionsProposees.has(nom) || declarations.some((d) => d.nom === nom)) continue;
   md += `\n### \`${nom}\` — dossier \`content/${nom}/\`, un fichier \`<id>.md\`\n\n${(schema as any).description ?? ''}\n\n${tableChamps(schema, new Set(['sections']))}\n\nCorps Markdown facultatif après le frontmatter (affiché sur la page de détail). \`sections\` facultatif : blocs ajoutés après le corps.\n`;
+}
+
+// Collections propres au site (1.46.0) : champs décrits pour l'IA, avec leurs synonymes et leur origine
+for (const d of declarations) {
+  const ligne = ([n, c]: [string, any]) => `| \`${n}\` | ${c.type}${c.unite ? ` (${c.unite})` : ''}${c.valeurs ? ` : ${Object.entries(c.valeurs).map(([k, v]: any) => `\`${k}\` (${v.libelle})`).join(', ')}` : ''}${c.vers?.pages ? ` → pages ${c.vers.pages}<id>` : ''}${c.multiple ? ', plusieurs' : ''}${c.sans_valeur ? `, ou \`sans\` (${c.sans_valeur})` : ''} | ${c.obligatoire ? 'oui' : c.demander ? 'à demander' : 'non'} | ${c.origine ?? 'lu'} | ${c.description} | ${(c.synonymes ?? []).join(', ')} |`;
+  md += `\n### \`${d.nom}\` (collection propre au site) — dossier \`content/${d.nom}/\`, un fichier \`<id>.md\`
+
+${d.description} Page : \`${d.base}/<id>\`, liste filtrable : \`${d.base}\`. Titre composé automatiquement (${[d.titre].flat().map((c: string) => `\`${c}\``).join(' + ')}) : ne pas écrire \`titre\`.
+Identifiant (nom du fichier) : ${d.identifiant.map((c: string) => `\`${c}\``).join(' + ')} en minuscules et tirets. Doublon : même ${d.cle.map((c: string) => `\`${c}\``).join(', ')}.
+
+| Champ | Type | Obligatoire | Origine | Contenu | Synonymes |
+| --- | --- | --- | --- | --- | --- |
+${Object.entries(d.champs).map(ligne).join('\n')}
+| \`epuise\` | oui/non | non | dit | Épuisé : la fiche reste en ligne avec la mention « épuisé » | rupture, plus en stock |
+| \`provenance\` | { champ: origine } | non | — | D'où vient chaque valeur ou texte : etiquette, contre-etiquette, client, liste-prix, domaine… Jamais affiché. | |
+
+Règles : **origine \`lu\`** = la valeur est lue (étiquette, tableau, document) ou dite par le client, jamais devinée ni cherchée ; si elle manque, le champ reste vide (obligatoire : fiche en brouillon et question au client). **\`deductible\`** = peut se déduire d'un autre champ par une règle sûre, à signaler dans \`hypotheses\`. Un texte repris d'une étiquette ou du site d'un producteur garde sa provenance (\`contre-etiquette\`, \`domaine\`) et n'est jamais présenté comme l'avis de l'entreprise. Pour créer ou mettre à jour des fiches en nombre : \`npm run fiches -- <fichier.json>\`.
+`;
 }
 
 md += `\n## Taxonomies (\`data/taxonomies.json\`)

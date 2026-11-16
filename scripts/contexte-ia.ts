@@ -8,7 +8,8 @@ import { join, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { parse as parseYaml } from 'yaml';
 import { urlPage, urlElement } from '../src/lib/urls';
-import { nomsCollections } from '../src/schemas/collections';
+import { nomsCollections, declarationsSite } from '../src/schemas/collections';
+import { exportCollection, titreFiche, cleFiche } from '../src/lib/collections-site';
 import { collectionsDuSite, modeleSite } from '../src/schemas/modeles';
 import site from '../data/site.json' with { type: 'json' };
 import menu from '../data/menu.json' with { type: 'json' };
@@ -32,6 +33,9 @@ const collections = Object.fromEntries(collectionsSite.map((nom) => [nom, lister
   const m = readFileSync(f, 'utf8').match(/^---\r?\n([\s\S]*?)\r?\n---/);
   const d = m ? parseYaml(m[1]) : {};
   const id = relative(join(R, 'content', nom), f).replace(/\.md$/, '');
+  const decl = declarationsSite[nom];
+  // Collection propre au site : titre composé, et valeurs qui l'identifient (doublons, mises à jour d'un import)
+  if (decl) return { id, url: urlElement(nom, id), titre: titreFiche(decl, d) || d.titre, statut: d.statut ?? 'publie', epuise: !!d.epuise, cle: cleFiche(decl, d), ...Object.fromEntries(decl.cle.map((c) => [c, d[c]])) };
   return { id, url: urlElement(nom, id), titre: d.titre, statut: d.statut ?? 'publie', categorie: d.categorie, lieu: d.lieu ?? d.ville, date: d.date, resume: d.resume, role: d.role ?? (nom === 'zones' ? 'seo' : undefined) };
 })]));
 
@@ -52,6 +56,9 @@ if (existsSync(join(R, 'data/formulaires.json'))) copyFileSync(join(R, 'data/for
 // Labels et certifications : l'espace client prévient avant leur date de fin
 if (existsSync(join(R, 'data/labels.json'))) copyFileSync(join(R, 'data/labels.json'), join(sortie, 'labels.json'));
 copyFileSync(join(R, 'ai/catalogue.md'), join(sortie, 'catalogue.md'));
+// Collections propres au site (1.46.0) : types de fiches pour la saisie, l'aperçu et l'import dans l'espace client
+const declarations = Object.values(declarationsSite);
+if (declarations.length) writeFileSync(join(sortie, 'collections.json'), JSON.stringify(declarations.map(exportCollection), null, 1));
 // Club : équipes et rencontres pour l'écran « Rencontres et scores » de l'espace client (saisie des entraîneurs).
 // sha : empreinte git du fichier, pour savoir si une saisie récente est déjà dans le site en ligne.
 if (modeleSite === 'club') {

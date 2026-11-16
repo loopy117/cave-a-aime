@@ -32,10 +32,12 @@ const SCALEWAY = '[Scaleway](https://www.scaleway.com/fr/leadership-environnemen
 /**
  * Évaluation commune aux sites (modèles entreprise, club, collectivité), hébergés sur le serveur de l'agence.
  * [statut, texte publié] — pour « non_valide » et « a_evaluer », le texte est l'action prévue (plan d'action).
+ * Tout est publié tel quel : pas de question en attente, de piste à trancher ni de démarche en cours
+ * (« demandé à… », « à confirmer »). Ce suivi interne va dans le projet « CMS IA », pas ici.
  */
 const SOCLE: Record<string, [Statut, string]> = {
-  '1.1': ['a_evaluer', 'Décrire l’utilité du site pour l’activité et son public (propre à chaque site).'],
-  '1.2': ['a_evaluer', 'Décrire les publics visés et leurs besoins (propre à chaque site).'],
+  '1.1': ['a_evaluer', 'Décrire l’utilité du site pour l’activité et son public.'],
+  '1.2': ['a_evaluer', 'Décrire les publics visés et leurs besoins.'],
   '1.3': ['valide', `Référent écoconception : ${PRESTATAIRE.societe}, qui conçoit et maintient le site ([${PRESTATAIRE.email}](mailto:${PRESTATAIRE.email})).`],
   '1.4': ['valide', 'À chaque mise en ligne, le site est construit, validé et contrôlé automatiquement, et chaque page est mesurée selon la méthode EcoIndex (éléments, requêtes, poids transféré). Les performances sont relevées chaque semaine. Cette déclaration est revue à chaque évolution du code commun des sites.'],
   '1.5': ['valide', 'Chaque page est mesurée à chaque mise en ligne selon la méthode EcoIndex. Objectifs : aucune page sous la note B, et un score d’avancement RGESN d’au moins 80 % d’ici fin 2027.'],
@@ -55,7 +57,7 @@ const SOCLE: Record<string, [Statut, string]> = {
   '2.9': ['valide', 'Aucune bibliothèque de composants prête à l’emploi ni framework JavaScript côté navigateur : les blocs d’interface sont développés pour ces sites.'],
   '2.10': ['valide', 'Les services tiers sont réduits et ne chargent rien par défaut : la carte Google Maps ne s’affiche qu’au clic, les avis Google sont intégrés aux pages à la construction, sans appel depuis le navigateur.'],
   '3.1': ['valide', 'Site statique : les pages sont générées une fois, à la mise en ligne, puis servies comme de simples fichiers, sans base de données ni calcul à chaque visite. Chaque page n’embarque que le CSS de ses blocs.'],
-  '3.2': ['a_evaluer', 'Justifier le dimensionnement du serveur, partagé entre les sites de l’agence.'],
+  '3.2': ['a_evaluer', 'Documenter le dimensionnement du serveur, partagé entre les sites de l’agence.'],
   '3.3': ['valide', 'HTTPS obligatoire avec redirection automatique, TLS 1.3, HTTP/2 et HTTP/3, IPv6 en place.'],
   '3.4': ['na', 'Le site n’est pas vendu avec un terminal.'],
   '3.5': ['a_evaluer', 'Distinguer correctifs et évolutions dans le journal des versions du code commun.'],
@@ -63,7 +65,7 @@ const SOCLE: Record<string, [Statut, string]> = {
   '3.7': ['valide', 'Aucun serveur de préproduction permanent : le site est construit à la demande, lors d’une modification, puis l’environnement de construction est libéré.'],
   '4.1': ['valide', 'Aucune lecture automatique de vidéo ou de son, aucun défilement automatique ; la seule animation (indicateur « ouvert ») s’arrête après trois cycles et n’est pas jouée si le visiteur a demandé à réduire les animations.'],
   '4.2': ['valide', 'Aucun défilement infini.'],
-  '4.3': ['a_evaluer', 'Vérifier les parcours principaux (contact, devis) à l’aide de la mesure d’audience (propre à chaque site).'],
+  '4.3': ['a_evaluer', 'Vérifier les parcours principaux (contact, devis) à l’aide de la mesure d’audience.'],
   '4.4': ['valide', 'Aucun service tiers n’est activé sans action du visiteur : la carte se charge au clic sur « Afficher la carte ».'],
   '4.5': ['valide', 'Formulaires, listes déroulantes et boutons natifs du navigateur.'],
   '4.6': ['valide', 'Aucune vidéo, aucun son, aucune animation décorative.'],
@@ -97,11 +99,11 @@ const SOCLE: Record<string, [Statut, string]> = {
   '7.4': ['na', 'Aucune blockchain.'],
   '8.1': ['valide', `Serveur hébergé par ${SCALEWAY} à Paris (centre de données DC2, région PAR1). L’hébergeur publie ses indicateurs (PUE, WUE, rDCE) et vise un PUE inférieur à 1,15 pour ses nouveaux centres de données et à 1,3 pour les existants.`],
   '8.2': ['valide', 'Scaleway conçoit ses serveurs, vise jusqu’à dix ans de durée de vie et réemploie ou recycle les composants en fin de vie.'],
-  '8.3': ['non_valide', 'Le centre de données DC2 de Scaleway affiche un PUE de 1,50, à la limite du seuil de 1,5. Piste : migrer le serveur vers un centre plus efficace de la région (DC3 : 1,39 ; DC5 : 1,23).'],
+  '8.3': ['non_valide', 'Le centre de données DC2 de Scaleway affiche un PUE de 1,50, au niveau du seuil de 1,5 fixé par le critère.'],
   '8.4': ['valide', 'WUE publié par Scaleway pour le centre DC2 : 0,012 L/kWh, sous l’objectif de 0,4 L/kWh.'],
   '8.5': ['valide', 'Électricité 100 % renouvelable (hydraulique pour le centre DC2), avec garanties d’origine, selon Scaleway.'],
   '8.6': ['valide', 'Serveur en France, où l’électricité est faiblement carbonée (moins de 100 g CO₂e/kWh), près des visiteurs du site.'],
-  '8.7': ['non_valide', 'Scaleway ne publie pas de récupération de chaleur pour ces centres de données : information demandée à l’hébergeur.'],
+  '8.7': ['non_valide', 'Scaleway ne publie pas de récupération de la chaleur pour ce centre de données.'],
   '8.8': ['na', 'Le site héberge bien moins de 10 To de données.'],
   '8.9': ['valide', 'Sauvegarde quotidienne, compressée (zstd) et chiffrée (age), sur un volume Scaleway puis copiée sur un serveur OVH avec une conservation dégressive ; les dépôts Git sont aussi copiés. Les fichiers publiés et les certificats ne sont pas sauvegardés : ils se reconstruisent. Environ 7 Mo par archive.'],
   '8.10': ['valide', 'Les traitements planifiés (sauvegardes, copies, mesures) tournent la nuit, hors des pics de consommation électrique.'],

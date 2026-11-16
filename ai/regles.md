@@ -108,6 +108,16 @@ ne se rédige jamais de mémoire ; elle se construit comme une interview.
 Rien de ce que la recherche web rapporte n'est présenté comme un fait sur l'entreprise ; un chiffre général
 (aide publique, norme) n'est repris que s'il vient d'une source officielle, citée dans `hypotheses`.
 
+## Collections propres au site
+
+Certains sites ont leurs propres fiches (vins, produits…) : leur section dans `ai/catalogue.md` donne chaque champ, son contenu, ses synonymes et son origine.
+
+- **Origine `lu`** : la valeur vient de la demande (texte, photo d'étiquette, tableau, document) ou du client, jamais d'une supposition ni d'une recherche web. Si elle manque, le champ reste vide ; un champ obligatoire manquant laisse la fiche en `statut: brouillon` et devient une question au client dans `questions`.
+- **Origine `deductible`** : déduire seulement par une règle sûre (région d'après l'appellation), et le dire dans `hypotheses`.
+- **`provenance`** : noter d'où vient chaque texte (`caviste`, `client`, `etiquette`, `contre-etiquette`, `domaine`). Un texte repris d'une étiquette ou du site d'un producteur garde sa provenance et n'est jamais présenté comme l'avis de l'entreprise.
+- Ne pas écrire `titre` (composé automatiquement) ; nom du fichier selon l'identifiant du catalogue. Une fiche qui existe déjà (même clé) est mise à jour, pas recréée ; une fiche n'est jamais supprimée (`epuise: true` si le client le demande).
+- Pour plusieurs fiches à la fois : écrire un JSON `{ "collection", "fiches": [{ "valeurs", "provenance" }] }` dans `_demande/` et lancer `npm run fiches -- _demande/<fichier>.json` (s'il est permis), sinon écrire les fichiers.
+
 ## YAML
 
 - Style bloc pour tout texte : une clé par ligne. Réserver `{ … }` aux valeurs courtes sans virgule ni deux-points.

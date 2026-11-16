@@ -5,9 +5,10 @@
 import { reglages } from './collections';
 import { urlPage, urlElement, urlArchive, urlCategorie } from './urls';
 import { estPublie, type Element } from './requete';
-import type { NomCollection } from '../schemas/collections';
+import { declarationsSite, type NomCollection } from '../schemas/collections';
+import { estIndexable } from './collections-site';
 
-export interface EntreeIndex { url: string; titre: string; publie: boolean; type: 'page' | 'element' | 'archive' | 'categorie'; collection?: NomCollection; id?: string; resume?: string; ancres?: string[] }
+export interface EntreeIndex { url: string; titre: string; publie: boolean; type: 'page' | 'element' | 'archive' | 'categorie'; collection?: NomCollection; id?: string; resume?: string; ancres?: string[]; /** non indexé : hors sitemap */ noindex?: boolean }
 
 export function construireIndex(pages: Element[], collections: Record<NomCollection, Element[]>, taxonomies: { metiers: Record<string, string> }): Map<string, EntreeIndex> {
   const index = new Map<string, EntreeIndex>();
@@ -31,7 +32,9 @@ export function construireIndex(pages: Element[], collections: Record<NomCollect
     if (r.detail) {
       for (const e of liste) {
         const url = urlElement(nom, e.id);
-        index.set(url, { url, titre: e.data.titre, publie: estPublie(e), type: 'element', collection: nom, id: e.id, resume: e.data.resume, ancres: e.data.ancres });
+        const decl = declarationsSite[nom];
+        const noindex = decl ? !estIndexable(decl, e.data) : !!e.data.seo?.noindex;
+        index.set(url, { url, titre: e.data.titre, publie: estPublie(e), type: 'element', collection: nom, id: e.id, resume: e.data.resume, ancres: e.data.ancres, ...(noindex ? { noindex } : {}) });
       }
     }
   }

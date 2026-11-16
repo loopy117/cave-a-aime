@@ -5,6 +5,8 @@
  * d'engagement. Ils ne changent que le prix de création ; les formules mensuelles restent les mêmes.
  * Mode comparatif (`commun` ou `inclus` sur les niveaux) : une bande « ce qui ne change pas » au-dessus des niveaux, le prix
  * dans chaque carte de niveau. `premiere_annee` : sous chaque formule, la création du niveau choisi + 12 mensualités.
+ * Deux offres titrées (`formules_titre`) : le site, payé une fois (titre, étapes couvertes), et à part les prestations
+ * mensuelles (titre, intro, bande commune). À employer sans `premiere_annee`, qui additionne les deux.
  */
 import Section from '../components/Section.astro';
 import Icone from '../components/Icone.astro';
@@ -32,6 +34,8 @@ const remise = (e: Engagement) => (avecNiveaux ? e.remise : c && c.prix > 0 ? Ma
 const comparatif = !!c && avecNiveaux && (c.commun.length > 0 || niveaux.some((n) => (n.inclus?.length ?? 0) > 0));
 // Coût de la première année : création (première durée) + 12 mensualités, pour chaque niveau
 const premiereAnnee = !!c?.premiere_annee;
+const deuxParties = !!t.formules_titre;
+const etapes = c?.etapes ?? [];
 const creationNette = (n: { prix: number }) => prixNet(n.prix, engagements[0]);
 const taxes = t.taxes ? ` ${t.taxes}` : '';
 const tiers = (n: number) => Math.round(n / 3);
@@ -45,8 +49,22 @@ const lienDe = (nom: string) => lienFormule.startsWith('#') ? lienFormule
   <div class="tf" id={uid}>
     {c && (
       <div class:list={['tf__creation', avecNiveaux && 'tf__creation--niveaux', comparatif && 'tf__creation--comparatif']}>
-        {comparatif && <p class="tf__titre">{c.titre}</p>}
+        {deuxParties ? <h3 class="tf__partie">{c.titre}</h3> : comparatif && <p class="tf__titre">{c.titre}</p>}
         {c.promesse && <p class="tf__promesse">{c.promesse}</p>}
+        {etapes.length > 0 && (
+          <div class="tf__etapes">
+            <p class="tf__commun-titre">{c.etapes_titre}</p>
+            <ol class="tf__etapes-liste">
+              {etapes.map((e, i) => (
+                <li class="tf__etape">
+                  <span class="tf__etape-num" aria-hidden="true">{i + 1}</span>
+                  <span class="tf__etape-titre">{e.titre}</span>
+                  {e.texte && <span class="tf__etape-texte">{e.texte}</span>}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
         {comparatif && c.commun.length > 0 && (
           <div class="tf__commun">
             <p class="tf__commun-titre">{c.commun_titre}</p>
@@ -85,7 +103,7 @@ const lienDe = (nom: string) => lienFormule.startsWith('#') ? lienFormule
           </fieldset>
         )}
         {!comparatif && <div class="tf__creation-prix" aria-live="polite">
-          <p class="tf__titre">{c.titre}</p>
+          {!deuxParties && <p class="tf__titre">{c.titre}</p>}
           {niveaux.map((n, i) => engagements.map((e, j) => {
             const net = prixNet(n.prix, e);
             return (
@@ -122,7 +140,22 @@ const lienDe = (nom: string) => lienFormule.startsWith('#') ? lienFormule
       </div>
     )}
 
-    <ul class="tf__formules" role="list">
+    <div class="tf__partie-mensuelle">
+    {(deuxParties || t.formules_commun.length > 0) && (
+      <div class="tf__partie-entete">
+        {deuxParties && <h3 class="tf__partie">{t.formules_titre}</h3>}
+        {t.formules_intro && <p class="tf__partie-intro">{t.formules_intro}</p>}
+        {t.formules_commun.length > 0 && (
+          <div class="tf__commun">
+            <p class="tf__commun-titre">{t.formules_commun_titre}</p>
+            <ul class="tf__commun-liste" role="list">
+              {t.formules_commun.map((x) => <li><svg class="tf__commun-icone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{x}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    )}
+    <ul class:list={['tf__formules', t.formules.length === 4 && 'tf__formules--4']} role="list">
       {t.formules.map((f) => (
         <li class:list={['tf__formule', f.mis_en_avant && 'tf__formule--avant']}>
           <div class="tf__entete">
@@ -149,6 +182,7 @@ const lienDe = (nom: string) => lienFormule.startsWith('#') ? lienFormule
         </li>
       ))}
     </ul>
+    </div>
 
     {voirOptions && t.options.length > 0 && (
       <div class="tf__options">
@@ -302,8 +336,25 @@ const lienDe = (nom: string) => lienFormule.startsWith('#') ? lienFormule
   .tf__creation--comparatif .tf__niveau-carte { padding-top: 18px; }
   .tf__creation--comparatif .tf__niveau-texte { min-height: 0; }
 
+  /* Deux parties : création payée une fois, puis partie mensuelle */
+  .tf__partie { font-family: var(--font-title); font-size: clamp(24px, 2.4vw, 32px); font-weight: 500; line-height: 1.2; color: var(--c-ink, var(--c-text)); }
+  .tf__creation > .tf__partie, .tf__creation > .tf__etapes { grid-column: 1 / -1; }
+  .tf__partie-mensuelle { display: flex; flex-direction: column; gap: 24px; }
+  .tf__partie-entete { display: flex; flex-direction: column; gap: 14px; }
+  .tf__partie-intro { font-size: var(--fs-md); line-height: 1.5; color: var(--c-text-body); max-width: 72ch; }
+  .tf__etapes { display: flex; flex-direction: column; gap: 12px; }
+  .tf__etapes-liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
+  .tf__etape { display: grid; grid-template-columns: auto 1fr; align-content: start; gap: 4px 12px; padding: 16px 18px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); }
+  .tf__etape-num { grid-row: span 2; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--c-primary); color: #fff; font-weight: 700; font-size: 15px; }
+  .tf__etape-titre { font-weight: 700; color: var(--c-ink, var(--c-text)); }
+  .tf__etape-texte { font-size: 14px; line-height: 1.45; color: var(--c-text-body); }
+
   /* Formules */
   .tf__formules { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 24px; align-items: stretch; }
+  /* Quatre formules : sur une ligne dès qu'il y a la place (sinon 2 × 2, puis l'une sous l'autre) */
+  .tf__formules--4 { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 20px; }
+  .tf__formules--4 .tf__formule { padding-inline: clamp(20px, 2vw, 28px); }
+  .tf__formules--4 .tf__nom { font-size: 26px; }
   .tf__formule { display: flex; flex-direction: column; gap: 26px; padding: clamp(28px, 3vw, 40px) clamp(24px, 2.5vw, 36px); border-radius: 24px; background: var(--c-surface); border: 1px solid var(--c-border); }
   .tf__entete { display: flex; flex-direction: column; gap: 8px; }
   .tf__nom-ligne { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; }

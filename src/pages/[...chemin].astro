@@ -21,7 +21,14 @@ import { nomsCollections } from '../schemas/collections';
 import taxonomies from '../../data/taxonomies.json';
 import siteBrut from '../../data/site.json';
 import type { Site } from '../schemas/site';
-import { service as ldService, article as ldArticle } from '../lib/donnees-structurees';
+import { service as ldService, article as ldArticle, idEntreprise } from '../lib/donnees-structurees';
+// Collections propres au site (1.46.0)
+import FicheListe from '../components/FicheListe.astro';
+import { declarationsSite } from '../schemas/collections';
+import { estIndexable, produitFiche, imageFiche } from '../lib/collections-site';
+import { indexSite } from '../lib/site';
+import { getImage } from 'astro:assets';
+import { resoudreImage } from '../lib/media';
 
 export async function getStaticPaths() {
   const chemins: any[] = [];
@@ -72,7 +79,9 @@ const url = Astro.url.pathname.replace(/\/$/, '') || '/';
 {props.type === 'detail' && await (async () => {
   const entree: any = (await getEntry(props.collection, props.id))!;
   const courant = { id: entree.id, data: entree.data };
-  const { avant, apres } = gabaritDetail(props.collection, courant);
+  const decl = declarationsSite[props.collection];
+  const titrePage = decl ? await (async () => { const idx = await indexSite(); return (u: string) => idx.get(u)?.titre; })() : undefined;
+  const { avant, apres } = gabaritDetail(props.collection, courant, titrePage);
   const aCorps = !!entree.body?.trim();
   // Données structurées : un Service pour les pages de service et de zone, rattaché à l'entreprise
   const base = Astro.site?.href.replace(/\/$/, '') ?? (siteBrut as any).url;
@@ -88,9 +97,14 @@ const url = Astro.url.pathname.replace(/\/$/, '') || '/';
       : props.collection === 'articles' || props.collection === 'actualites'
         ? [ldArticle(base, { type: props.collection === 'actualites' ? 'BlogPosting' : 'Article', url, titre: entree.data.titre, description: entree.data.resume,
             date: entree.data.date, auteur: entree.data.auteur, image: `${base}/partage/${url.replace(/^\/|\/$/g, '').replace(/\//g, '--')}.png` })]
-        : [];
+        : decl
+          ? [produitFiche(decl, entree.data, { base, url, idEntreprise: idEntreprise(base), description: entree.data.resume,
+              image: imageFiche(decl, entree.data) ? base + (await (async (m) => getImage({ src: m, format: 'webp', width: Math.min(1200, m.width) }))(resoudreImage(imageFiche(decl, entree.data).src))).src : undefined })].filter(Boolean) as Record<string, unknown>[]
+          : [];
+  // Fiche d'une collection propre : indexée seulement si elle remplit la condition de sa collection (contenu propre)
+  const noindex = decl ? !estIndexable(decl, entree.data) : entree.data.seo?.noindex;
   return (
-    <Base titre={entree.data.titre} seo={{ ...entree.data.seo, description: entree.data.seo?.description ?? entree.data.resume }} url={url} jsonld={jsonld}>
+    <Base titre={entree.data.titre} seo={{ ...entree.data.seo, noindex, description: entree.data.seo?.description ?? entree.data.resume }} url={url} jsonld={jsonld}>
       <Sections sections={avant} courant={courant} />
       {props.collection === 'albums' && <Album titre={entree.data.titre} photos={entree.data.photos} credit={entree.data.credit} />}
       {aCorps && <Section largeur="etroite"><Markdown source={entree.body} /></Section>}
@@ -107,6 +121,16 @@ const url = Astro.url.pathname.replace(/\/$/, '') || '/';
   const elements = props.ids.map((id: string) => tous.find((e) => e.id === id));
   const cats = a.parCategorie ? Object.entries(taxonomies.metiers).filter(([s]) => tous.some((e) => e.data.categorie === s && estPublie(e))) : [];
   const urlN = (n: number) => (props.categorie ? urlCategorie(props.collection, props.categorie, n) : urlArchive(props.collection, n));
+  if (a.fiches) {
+    // Collection propre au site : liste filtrable de toutes les fiches publiées
+    const idx = await indexSite();
+    return (
+      <Base titre={props.titre} seo={{ description: a.intro }} url={url} typePage="CollectionPage">
+        <Sections sections={[{ block: 'hero', variant: 'minimal', titre: props.titre, texte: a.intro }]} />
+        <Section><FicheListe collection={props.collection} elements={elements.filter((e: any) => estPublie(e))} titrePage={(u: string) => idx.get(u)?.titre} /></Section>
+      </Base>
+    );
+  }
   return (
     <Base titre={props.titre + (props.page > 1 ? ` — page ${props.page}` : '')} seo={{ description: a.intro }} url={url} typePage="CollectionPage">
       <Sections sections={[{ block: 'hero', variant: 'minimal', titre: props.titre, texte: a.intro }]} />

@@ -43,6 +43,12 @@ export const tarifs = z
           .max(6)
           .default([])
           .describe('Ce qui est identique pour tous les niveaux (qualité, performances, design sur mesure…) : une bande au-dessus des niveaux, qui montre que seule l\'étendue change. Avec `commun` ou `inclus`, le prix s\'affiche dans chaque carte de niveau (une seule durée d\'engagement)'),
+        etapes_titre: z.string().max(60).default('Ce que comprend ce prix').describe('Titre des étapes couvertes par le prix de création'),
+        etapes: z
+          .array(z.object({ titre: z.string().min(3).max(40), texte: z.string().max(160).optional() }).strict())
+          .max(4)
+          .default([])
+          .describe('Ce que couvre le prix du site, payé une fois, étape par étape (ex. Création, Reprise de l\'existant, Mise en service)'),
         premiere_annee: z.boolean().default(false).describe('Sous chaque formule : coût de la première année (création du niveau choisi + 12 mensualités)'),
         arrondi: z.enum(['aucun', 'psychologique']).default('aucun').describe('psychologique : prix après remise arrondi au prix rond inférieur (…90 ou …99), la remise réelle n\'est jamais inférieure à celle annoncée'),
         engagements: z
@@ -61,6 +67,14 @@ export const tarifs = z
       })
       .strict()
       .optional(),
+    formules_titre: z.string().max(70).optional().describe('Titre des formules mensuelles (ex. « Nos prestations mensuelles, à part du site ») : avec lui, la grille se lit en deux offres titrées, le site d\'un côté, les prestations de l\'autre'),
+    formules_intro: z.string().max(260).optional().describe('Sous ce titre : ce que couvre le prix mensuel, durée d\'engagement'),
+    formules_commun_titre: z.string().max(60).default('Dans chaque formule').describe('Titre de la bande commune aux formules'),
+    formules_commun: z
+      .array(z.string().min(3).max(70))
+      .max(6)
+      .default([])
+      .describe('Ce que toutes les formules comprennent (hébergement, nom de domaine, sécurité…) : une bande au-dessus des cartes, qui ne gardent que ce qui les distingue'),
     formules: z
       .array(
         z

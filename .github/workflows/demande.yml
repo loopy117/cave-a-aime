@@ -39,7 +39,7 @@ jobs:
   realiser:
     # Ces workflows servent aux sites ; dans le dépôt du socle lui-même (sans contenus) ils ne tournent pas
     if: ${{ github.repository != 'loopy117/socle-sites' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 50
     permissions:
       contents: read
@@ -177,7 +177,7 @@ jobs:
     needs: realiser
     # Toujours, sauf si la demande n'a même pas été lancée : le site doit savoir que la réalisation a échoué
     if: ${{ always() && github.repository != 'loopy117/socle-sites' && needs.realiser.result != 'skipped' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write
